@@ -1,34 +1,33 @@
-export default {
+module.exports = {
   name: "odoo-react-native",
   slug: "odoo-react-native",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
-  userInterfaceStyle: "automatic",
+  userInterfaceStyle: "light",
   splash: {
     image: "./assets/splash.png",
     resizeMode: "contain",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#ffffff"
   },
-  assetBundlePatterns: ["**/*"],
+  assetBundlePatterns: [
+    "**/*"
+  ],
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.odoo.reactnative",
+    bundleIdentifier: "com.odoo.reactnative"
   },
   android: {
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
-      backgroundColor: "#ffffff",
+      backgroundColor: "#ffffff"
     },
     package: "com.odoo.reactnative",
+    permissions: [
+      "INTERNET"
+    ]
   },
   web: {
-    favicon: "./assets/favicon.png",
-  },
-  extra: {
-    eas: {
-      projectId: "your-project-id",
-    },
-  },
-  sdkVersion: "52.0.0",
+    favicon: "./assets/favicon.png"
+  }
 };
