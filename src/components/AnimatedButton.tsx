@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import {
   StyleSheet,
   TouchableWithoutFeedback,
   View,
-  Text,
+  ActivityIndicator,
   StyleProp,
   ViewStyle,
   TextStyle,
@@ -14,7 +14,11 @@ import Animated, {
   useSharedValue,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
+  withDelay,
   interpolateColor,
+  Easing,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -22,10 +26,11 @@ import {
   components,
   createShadow,
   animationPresets,
+  timing,
 } from "../utils/theme";
 
-type ButtonVariant = "primary" | "secondary" | "text";
-type ButtonSize = "normal" | "compact";
+type ButtonVariant = "primary" | "secondary" | "text" | "gradient";
+type ButtonSize = "normal" | "compact" | "large";
 
 interface AnimatedButtonProps {
   onPress: () => void;
@@ -39,11 +44,13 @@ interface AnimatedButtonProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   gradientColors?: [string, string, ...string[]];
+  glowEffect?: boolean;
 }
 
 /**
- * AnimatedButton provides a highly customizable button with fluid animations,
- * gradient backgrounds, and press effects following the app's design language.
+ * Enhanced AnimatedButton provides a highly customizable button with fluid animations,
+ * gradient backgrounds, press effects, and optional glow animations following 
+ * the app's design language.
  */
 export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   onPress,
@@ -57,20 +64,88 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   leftIcon,
   rightIcon,
   gradientColors,
+  glowEffect = true,
 }) => {
   // Animation values
   const scale = useSharedValue(1);
   const pressed = useSharedValue(0);
+  const glowOpacity = useSharedValue(0.5);
+  const glowScale = useSharedValue(1);
+  const gradientPosition = useSharedValue(0);
+  const shimmerOpacity = useSharedValue(0);
+
+  // Setup animations
+  useEffect(() => {
+    if (glowEffect && !disabled && !loading && variant !== "text") {
+      // Pulsing glow effect
+      glowOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.7, { duration: timing.slow, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.2, { duration: timing.slow, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      
+      // Subtle scale effect
+      glowScale.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: timing.slow + 300, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: timing.slow + 300, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+      
+      // Gradient shimmer effect for primary and gradient variants
+      if (variant === "primary" || variant === "gradient") {
+        // Animate gradient position
+        gradientPosition.value = withRepeat(
+          withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+          -1,
+          true
+        );
+        
+        // Shimmer effect
+        shimmerOpacity.value = withRepeat(
+          withSequence(
+            withTiming(0, { duration: 0 }),
+            withDelay(1000, withTiming(0.3, { duration: 500 })),
+            withTiming(0, { duration: 500 })
+          ),
+          -1,
+          false
+        );
+      }
+    }
+  }, [glowEffect, disabled, loading, variant]);
 
   // Handle button press animations
   const handlePressIn = () => {
-    scale.value = withSpring(0.97, animationPresets.spring);
-    pressed.value = withTiming(1, { duration: 150 });
+    scale.value = withSpring(0.96, { ...animationPresets.spring, stiffness: 200 });
+    pressed.value = withTiming(1, { duration: timing.fast });
+    
+    // Increase glow on press
+    if (glowEffect && (variant === "primary" || variant === "gradient")) {
+      glowOpacity.value = withTiming(0.9, { duration: timing.fast });
+      glowScale.value = withTiming(1.3, { duration: timing.fast });
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, animationPresets.spring);
-    pressed.value = withTiming(0, { duration: 200 });
+    scale.value = withSpring(1, { 
+      ...animationPresets.spring, 
+      stiffness: 120,
+      damping: 15,
+      mass: 0.8
+    });
+    pressed.value = withTiming(0, { duration: timing.normal });
+    
+    // Return to normal glow animation if needed
+    if (glowEffect && !disabled && (variant === "primary" || variant === "gradient")) {
+      glowOpacity.value = withTiming(0.5, { duration: timing.normal });
+      glowScale.value = withTiming(1, { duration: timing.normal });
+    }
   };
 
   // Determine button colors based on variant
@@ -78,6 +153,8 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     switch (variant) {
       case "primary":
         return gradientColors || [colors.primary, `${colors.secondary}CC`];
+      case "gradient":
+        return gradientColors || [`${colors.accent}EE`, colors.primary, `${colors.secondary}DD`];
       case "secondary":
         return [colors.backgroundLight, colors.backgroundLight];
       case "text":
@@ -87,7 +164,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     }
   };
 
-  // Animated styles for button scaling and glow effects
+  // Animated styles for button scaling and effects
   const animatedStyles = useAnimatedStyle(() => {
     // Handle web compatibility for transform
     const transformStyle =
@@ -95,10 +172,43 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
         ? { transform: `scale(${scale.value})` }
         : { transform: [{ scale: scale.value }] };
 
+    // Generate more vibrant borderColor for secondary variant when pressed
+    const borderColorAnimation = 
+      variant === "secondary" 
+        ? { 
+            borderColor: interpolateColor(
+              pressed.value,
+              [0, 1],
+              [`${colors.primary}30`, colors.primary]
+            )
+          }
+        : {};
+
     return {
       ...transformStyle,
+      ...borderColorAnimation,
       opacity: disabled ? 0.6 : 1,
       backgroundColor: variant === "text" ? "transparent" : undefined,
+    };
+  });
+
+  // Glow effect animation
+  const glowAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: glowOpacity.value,
+      transform: Platform.OS === "web" 
+        ? { transform: `scale(${glowScale.value})` } 
+        : [{ scale: glowScale.value }],
+    };
+  });
+
+  // Shimmer animation
+  const shimmerAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: shimmerOpacity.value,
+      transform: Platform.OS === "web"
+        ? { transform: `translateX(${(gradientPosition.value * 200) - 100}%)` }
+        : [{ translateX: (gradientPosition.value * 200) - 100 }],
     };
   });
 
@@ -108,6 +218,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
     switch (variant) {
       case "primary":
+      case "gradient":
         textColor = colors.textPrimary;
         break;
       case "secondary":
@@ -121,7 +232,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     }
 
     // Brighten text slightly when pressed for 'secondary' and 'text' variants
-    if (variant !== "primary") {
+    if (variant === "secondary" || variant === "text") {
       const brighterColor = interpolateColor(
         pressed.value,
         [0, 1],
@@ -135,20 +246,43 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   });
 
   // Determine button height based on size
-  const buttonHeight =
-    size === "compact"
-      ? components.button.compactHeight
-      : components.button.height;
+  const getButtonHeight = () => {
+    switch (size) {
+      case "compact":
+        return components.button.compactHeight;
+      case "large":
+        return components.button.height + 8;
+      default:
+        return components.button.height;
+    }
+  };
+
+  // Get font size based on button size
+  const getFontSize = () => {
+    switch (size) {
+      case "compact":
+        return 14;
+      case "large":
+        return 18;
+      default:
+        return 16;
+    }
+  };
+
+  const buttonHeight = getButtonHeight();
+  const fontSize = getFontSize();
 
   // Get button colors for gradient or solid background
   const buttonColors = getButtonColors();
 
-  // Apply drop shadow effect only to primary and secondary buttons
+  // Apply drop shadow effect based on variant
   const shadowStyle =
-    variant === "primary" || variant === "secondary"
+    variant !== "text"
       ? createShadow(
-          4,
-          variant === "primary" ? colors.primary : "rgba(0,0,0,0.15)"
+          variant === "primary" || variant === "gradient" ? 6 : 3,
+          variant === "primary" || variant === "gradient" 
+            ? `${buttonColors[0]}70` 
+            : "rgba(0,0,0,0.15)"
         )
       : {};
 
@@ -156,12 +290,31 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   const renderContent = () => (
     <View style={styles.contentContainer}>
       {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
-      <Animated.Text style={[styles.text, textAnimatedStyle, textStyle]}>
-        {loading ? "Loading..." : title}
-      </Animated.Text>
+      
+      {loading ? (
+        <ActivityIndicator 
+          size="small" 
+          color={variant === "primary" || variant === "gradient" ? colors.textPrimary : colors.primary} 
+        />
+      ) : (
+        <Animated.Text 
+          style={[
+            styles.text, 
+            { fontSize }, 
+            textAnimatedStyle, 
+            textStyle
+          ]}
+        >
+          {title}
+        </Animated.Text>
+      )}
+      
       {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
     </View>
   );
+
+  // Use gradient for primary and gradient variants
+  const useGradient = variant === "primary" || variant === "gradient";
 
   // Render the button with appropriate styling based on variant
   return (
@@ -179,15 +332,33 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
           style,
         ]}
       >
-        {variant === "primary" ? (
-          <LinearGradient
-            colors={buttonColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradient}
-          >
-            {renderContent()}
-          </LinearGradient>
+        {/* Glow effect (conditionally rendered) */}
+        {glowEffect && !disabled && (variant === "primary" || variant === "gradient") && (
+          <Animated.View 
+            style={[
+              styles.glow,
+              { backgroundColor: `${buttonColors[0]}40` },
+              glowAnimatedStyle
+            ]} 
+          />
+        )}
+        
+        {useGradient ? (
+          <>
+            <LinearGradient
+              colors={buttonColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gradient}
+            >
+              {/* Shimmer effect */}
+              {glowEffect && !disabled && !loading && (
+                <Animated.View style={[styles.shimmer, shimmerAnimatedStyle]} />
+              )}
+              
+              {renderContent()}
+            </LinearGradient>
+          </>
         ) : (
           <View
             style={[
@@ -212,29 +383,35 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: components.button.borderRadius,
     overflow: "hidden",
-    minWidth: 90,
+    minWidth: 100,
+    position: "relative",
   },
   gradient: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
+    overflow: "hidden",
   },
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: components.button.borderRadius,
+    position: "relative",
+    overflow: "hidden",
   },
   contentContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
+    zIndex: 2,
   },
   text: {
-    fontSize: 16,
     fontWeight: "600",
     textAlign: "center",
+    letterSpacing: 0.3,
   },
   iconLeft: {
     marginRight: 8,
@@ -242,6 +419,24 @@ const styles = StyleSheet.create({
   iconRight: {
     marginLeft: 8,
   },
+  glow: {
+    position: "absolute",
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: components.button.borderRadius * 1.5,
+    zIndex: -1,
+  },
+  shimmer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: "40%",
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    transform: [{ skewX: "-20deg" }],
+    zIndex: 1,
+  }
 });
 
 export default AnimatedButton;

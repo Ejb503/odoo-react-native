@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, useWindowDimensions, Platform, View } from "react-native";
 import {
   Canvas,
@@ -8,43 +8,81 @@ import {
   useClock,
   Shadow,
   SkPath,
+  BlurMask,
+  SweepGradient,
+  LinearGradient,
+  Circle,
+  Group,
+  mix,
 } from "@shopify/react-native-skia";
 import {
   useDerivedValue,
   useSharedValue,
   SharedValue,
+  withRepeat,
   withTiming,
+  Easing,
 } from "react-native-reanimated";
 import { colors } from "../utils/theme";
 
 /**
- * AnimatedBackground component creates a fluid, animated background with flowing
+ * Enhanced AnimatedBackground component creates a fluid, animated background with flowing
  * gradient-like patterns using React Native Skia.
  *
  * It renders multiple animated paths with subtle movement to create a futuristic,
- * premium look that responds to time-based animation.
+ * premium look that responds to time-based animation, with additional visual effects.
  */
 export const AnimatedBackground: React.FC = () => {
-  // For web platform, return a simple colored background
+  // For web platform, return a simple colored background with gradient
   if (Platform.OS === "web") {
-    return <View style={styles.canvas} />;
+    return (
+      <View style={[styles.canvas, styles.webGradient]}>
+        <View style={styles.webOverlay} />
+      </View>
+    );
   }
 
   // Below code will only run on native platforms
   const { width, height } = useWindowDimensions();
   const time = useClock();
 
-  // Create 3 animated values for different wave patterns
+  // Create animated values for different elements
   const wave1 = useSharedValue(0);
   const wave2 = useSharedValue(0);
   const wave3 = useSharedValue(0);
+  const rotationAngle = useSharedValue(0);
+  const glowOpacity = useSharedValue(0.3);
+  const glowScale = useSharedValue(1);
+
+  // Setup initial animations
+  useEffect(() => {
+    // Animate glow effect
+    glowOpacity.value = withRepeat(
+      withTiming(0.7, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+    
+    glowScale.value = withRepeat(
+      withTiming(1.2, { duration: 4000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+    
+    // Animate rotation for gradients
+    rotationAngle.value = withRepeat(
+      withTiming(Math.PI * 2, { duration: 20000, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, []);
 
   // Animate the waves with different speeds
   useDerivedValue(() => {
     const t = Number(time) / 1000; // Convert to seconds
-    wave1.value = Math.sin(t * 1.5) * 0.5 + 0.5;
-    wave2.value = Math.sin(t * 2.0) * 0.5 + 0.5;
-    wave3.value = Math.sin(t * 2.5) * 0.5 + 0.5;
+    wave1.value = Math.sin(t * 1.2) * 0.5 + 0.5;
+    wave2.value = Math.sin(t * 1.7) * 0.5 + 0.5;
+    wave3.value = Math.sin(t * 2.2) * 0.5 + 0.5;
   }, [time]);
 
   // Primary blob path computation
@@ -56,7 +94,7 @@ export const AnimatedBackground: React.FC = () => {
 
     // Calculate control points with animation
     const centerX = width * 0.5;
-    const centerY = height * 0.5;
+    const centerY = height * 0.4; // Positioned slightly higher
     const radius = size * 0.5;
 
     // Start point
@@ -73,13 +111,13 @@ export const AnimatedBackground: React.FC = () => {
       );
 
       const cp1 = vec(
-        centerX + radius * 1.2 * Math.cos(prevAngle + 0.2 + wave1.value * 0.5),
-        centerY + radius * 1.2 * Math.sin(prevAngle + 0.2 + wave1.value * 0.5)
+        centerX + radius * 1.3 * Math.cos(prevAngle + 0.3 + wave1.value * 0.6),
+        centerY + radius * 1.3 * Math.sin(prevAngle + 0.3 + wave1.value * 0.6)
       );
 
       const cp2 = vec(
-        centerX + radius * 1.2 * Math.cos(angle - 0.2 - wave1.value * 0.5),
-        centerY + radius * 1.2 * Math.sin(angle - 0.2 - wave1.value * 0.5)
+        centerX + radius * 1.3 * Math.cos(angle - 0.3 - wave1.value * 0.6),
+        centerY + radius * 1.3 * Math.sin(angle - 0.3 - wave1.value * 0.6)
       );
 
       path.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, point.x, point.y);
@@ -93,13 +131,13 @@ export const AnimatedBackground: React.FC = () => {
   const path2 = useDerivedValue<SkPath>(() => {
     const size = Math.min(width, height) * 1.2;
 
-    // Create a path for the second blob (smaller)
+    // Create a path for the second blob (larger)
     const path = Skia.Path.Make();
 
     // Calculate control points with animation
-    const centerX = width * 0.7;
+    const centerX = width * 0.8;
     const centerY = height * 0.3;
-    const radius = size * 0.3;
+    const radius = size * 0.4;
 
     // Start point
     path.moveTo(centerX + radius * Math.cos(0), centerY + radius * Math.sin(0));
@@ -115,13 +153,13 @@ export const AnimatedBackground: React.FC = () => {
       );
 
       const cp1 = vec(
-        centerX + radius * 1.3 * Math.cos(prevAngle + 0.3 - wave2.value * 0.6),
-        centerY + radius * 1.3 * Math.sin(prevAngle + 0.3 - wave2.value * 0.6)
+        centerX + radius * 1.4 * Math.cos(prevAngle + 0.4 - wave2.value * 0.7),
+        centerY + radius * 1.4 * Math.sin(prevAngle + 0.4 - wave2.value * 0.7)
       );
 
       const cp2 = vec(
-        centerX + radius * 1.3 * Math.cos(angle - 0.3 + wave2.value * 0.6),
-        centerY + radius * 1.3 * Math.sin(angle - 0.3 + wave2.value * 0.6)
+        centerX + radius * 1.4 * Math.cos(angle - 0.4 + wave2.value * 0.7),
+        centerY + radius * 1.4 * Math.sin(angle - 0.4 + wave2.value * 0.7)
       );
 
       path.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, point.x, point.y);
@@ -140,8 +178,8 @@ export const AnimatedBackground: React.FC = () => {
 
     // Calculate control points with animation
     const centerX = width * 0.2;
-    const centerY = height * 0.8;
-    const radius = size * 0.25;
+    const centerY = height * 0.7;
+    const radius = size * 0.35;
 
     // Start point
     path.moveTo(centerX + radius * Math.cos(0), centerY + radius * Math.sin(0));
@@ -157,13 +195,13 @@ export const AnimatedBackground: React.FC = () => {
       );
 
       const cp1 = vec(
-        centerX + radius * 1.4 * Math.cos(prevAngle + 0.4 + wave3.value * 0.7),
-        centerY + radius * 1.4 * Math.sin(prevAngle + 0.4 + wave3.value * 0.7)
+        centerX + radius * 1.5 * Math.cos(prevAngle + 0.5 + wave3.value * 0.8),
+        centerY + radius * 1.5 * Math.sin(prevAngle + 0.5 + wave3.value * 0.8)
       );
 
       const cp2 = vec(
-        centerX + radius * 1.4 * Math.cos(angle - 0.4 - wave3.value * 0.7),
-        centerY + radius * 1.4 * Math.sin(angle - 0.4 - wave3.value * 0.7)
+        centerX + radius * 1.5 * Math.cos(angle - 0.5 - wave3.value * 0.8),
+        centerY + radius * 1.5 * Math.sin(angle - 0.5 - wave3.value * 0.8)
       );
 
       path.cubicTo(cp1.x, cp1.y, cp2.x, cp2.y, point.x, point.y);
@@ -173,49 +211,143 @@ export const AnimatedBackground: React.FC = () => {
     return path;
   }, [width, height, wave3]);
 
+  // Additional decorative glow circle
+  const glowCircleOpacity = useDerivedValue(() => {
+    return mix(glowOpacity.value, 0.3, 0.7);
+  }, [glowOpacity]);
+
+  const glowCircleScale = useDerivedValue(() => {
+    return mix(glowScale.value, 1, 1.2);
+  }, [glowScale]);
+
+  // Rotation for gradients
+  const rotation = useDerivedValue(() => {
+    return rotationAngle.value;
+  }, [rotationAngle]);
+
   return (
     <Canvas style={styles.canvas}>
-      {/* Primary blob - purple */}
+      {/* Background overlay with animated gradient */}
+      <Group>
+        <SweepGradient
+          c={{ x: width / 2, y: height / 2 }}
+          colors={[
+            `${colors.backgroundDark}`,
+            `${colors.backgroundMedium}`,
+            `${colors.primary}10`,
+            `${colors.secondary}10`,
+            `${colors.backgroundDark}`,
+          ]}
+          start={0}
+          end={Math.PI * 2}
+          transform={[{ rotate: rotation.value }]}
+        />
+      </Group>
+
+      {/* Decorative glow circle in the center */}
+      <Group
+        transform={[
+          { translateX: width * 0.5 },
+          { translateY: height * 0.3 },
+          { scale: glowCircleScale.value }
+        ]}
+      >
+        <Circle r={Math.min(width, height) * 0.2} opacity={glowCircleOpacity.value}>
+          <LinearGradient
+            start={vec(0, 0)}
+            end={vec(width, height)}
+            colors={[
+              `${colors.primary}10`,
+              `${colors.secondary}10`,
+              `${colors.accent}10`
+            ]}
+          />
+          <BlurMask blur={40} style="normal" />
+        </Circle>
+      </Group>
+      
+      {/* Primary blob - purple with enhanced opacity and effects */}
       <Path
         path={path1}
-        color={`${colors.primary}15`} // Very transparent primary color
+        color={`${colors.primary}20`}
         style="fill"
       >
+        <LinearGradient
+          start={vec(0, 0)}
+          end={vec(width, height)}
+          colors={[
+            `${colors.primary}20`,
+            `${colors.secondary}15`,
+          ]}
+          transform={[{ rotate: rotation.value * 0.5 }]}
+        />
         <Shadow
           dx={0}
           dy={0}
-          blur={20}
-          color={`${colors.primary}20`} // Subtle shadow
+          blur={30}
+          color={`${colors.primary}25`}
         />
+        <BlurMask blur={20} style="normal" />
       </Path>
 
-      {/* Secondary blob - blue */}
+      {/* Secondary blob - blue with enhanced effects */}
       <Path
         path={path2}
-        color={`${colors.secondary}15`} // Very transparent secondary color
         style="fill"
       >
+        <LinearGradient
+          start={vec(width, 0)}
+          end={vec(0, height)}
+          colors={[
+            `${colors.secondary}20`,
+            `${colors.accent}15`,
+          ]}
+          transform={[{ rotate: -rotation.value * 0.3 }]}
+        />
         <Shadow
           dx={0}
           dy={0}
-          blur={15}
-          color={`${colors.secondary}20`} // Subtle shadow
+          blur={25}
+          color={`${colors.secondary}25`}
         />
+        <BlurMask blur={15} style="normal" />
       </Path>
 
-      {/* Tertiary blob - accent */}
+      {/* Tertiary blob - accent with enhanced effects */}
       <Path
         path={path3}
-        color={`${colors.accent}15`} // Very transparent accent color
         style="fill"
       >
+        <LinearGradient
+          start={vec(0, height)}
+          end={vec(width, 0)}
+          colors={[
+            `${colors.accent}20`,
+            `${colors.primary}15`,
+          ]}
+          transform={[{ rotate: rotation.value * 0.7 }]}
+        />
         <Shadow
           dx={0}
           dy={0}
-          blur={15}
-          color={`${colors.accent}20`} // Subtle shadow
+          blur={25}
+          color={`${colors.accent}25`}
         />
+        <BlurMask blur={15} style="normal" />
       </Path>
+      
+      {/* Overlay to add depth */}
+      <Group>
+        <LinearGradient
+          start={vec(0, 0)}
+          end={vec(0, height)}
+          colors={[
+            `${colors.backgroundDark}40`,
+            `${colors.backgroundDark}00`,
+            `${colors.backgroundDark}60`,
+          ]}
+        />
+      </Group>
     </Canvas>
   );
 };
@@ -228,6 +360,17 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: colors.backgroundDark,
   },
+  webGradient: {
+    backgroundImage: `linear-gradient(to bottom right, ${colors.backgroundDark}, ${colors.backgroundMedium}, ${colors.backgroundDark})`,
+  },
+  webOverlay: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+    backgroundImage: `radial-gradient(circle at 30% 40%, ${colors.primary}10 0%, transparent 60%), 
+                     radial-gradient(circle at 70% 30%, ${colors.secondary}10 0%, transparent 60%),
+                     radial-gradient(circle at 20% 70%, ${colors.accent}10 0%, transparent 60%)`,
+  }
 });
 
 export default AnimatedBackground;

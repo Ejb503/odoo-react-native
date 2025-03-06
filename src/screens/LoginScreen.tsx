@@ -6,30 +6,31 @@ import {
   Platform, 
   ScrollView, 
   Keyboard,
-  StatusBar
+  StatusBar,
+  TouchableOpacity,
+  Text as RNText,
+  ImageBackground
 } from 'react-native';
 import { 
   Text, 
   Snackbar,
-  IconButton
+  IconButton,
+  Button
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { Video, ResizeMode } from 'expo-av';
 
 import { RootStackParamList } from '../App';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { login, clearError } from '../state/slices/authSlice';
 import { AuthError } from '../api/authService';
-import { colors, spacing, createShadow } from '../utils/theme';
+import { colors, spacing } from '../utils/theme';
 import { PROXY_URL as PROXY_SERVER_URL, DEFAULT_ODOO_URL } from '../utils/config';
 
-// Import new components
-import AnimatedBackground from '../components/AnimatedBackground';
-import GlassCard from '../components/GlassCard';
-import AnimatedButton from '../components/AnimatedButton';
+// Import components
 import FloatingInput from '../components/FloatingInput';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
@@ -170,167 +171,117 @@ const LoginScreen = () => {
     dispatch(clearError());
   };
 
-  // Helper functions for platform-specific rendering
+  // Render logo without animation
   const renderLogo = () => {
-    if (Platform.OS === 'web') {
-      return (
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>Odoo</Text>
-          <Text style={styles.logoSubtext}>Voice Assistant</Text>
-        </View>
-      );
-    } else {
-      return (
-        <Animated.View 
-          style={styles.logoContainer}
-          entering={FadeInDown.duration(800).delay(200)}
-        >
-          <Text style={styles.logoText}>Odoo</Text>
-          <Text style={styles.logoSubtext}>Voice Assistant</Text>
-        </Animated.View>
-      );
-    }
-  };
-
-  const renderProxyInfo = () => {
-    if (Platform.OS === 'web') {
-      return (
-        <Text style={styles.noteText}>
-          Connecting via proxy at {PROXY_SERVER_URL}
-        </Text>
-      );
-    } else {
-      return (
-        <Animated.Text 
-          style={styles.noteText}
-          entering={FadeIn.duration(800).delay(600)}
-        >
-          Connecting via proxy at {PROXY_SERVER_URL}
-        </Animated.Text>
-      );
-    }
-  };
-
-  const renderCard = () => {
-    const cardContent = (
-      <GlassCard elevation={6} glowColor={colors.primary}>
-        <Text style={styles.loginTitle}>Welcome</Text>
-        <Text style={styles.loginSubtitle}>Sign in to continue</Text>
-        
-        <View style={styles.formContainer}>
-          {/* Username Input */}
-          <FloatingInput 
-            label="Username"
-            value={username}
-            onChangeText={(text) => {
-              setUsername(text);
-              setUsernameError('');
-            }}
-            autoCapitalize="none"
-            error={usernameError}
-            hint={usernameError ? undefined : "Enter your Odoo username"}
-            leftIcon={
-              <IconButton
-                icon="account"
-                size={20}
-                iconColor={colors.primary}
-              />
-            }
-            returnKeyType="next"
-            blurOnSubmit={false}
-          />
-          
-          {/* Password Input */}
-          <FloatingInput 
-            label="Password"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setPasswordError('');
-            }}
-            secureTextEntry={!showPassword}
-            error={passwordError}
-            hint={passwordError ? undefined : "Enter your password"}
-            leftIcon={
-              <IconButton
-                icon="lock"
-                size={20}
-                iconColor={colors.primary}
-              />
-            }
-            rightIcon={
-              <IconButton
-                icon={showPassword ? "eye-off" : "eye"}
-                size={20}
-                iconColor={colors.textSecondary}
-                onPress={() => setShowPassword(!showPassword)}
-              />
-            }
-            returnKeyType="next"
-            blurOnSubmit={false}
-          />
-          
-          {/* Server URL Input */}
-          <FloatingInput 
-            label="Odoo Server URL"
-            value={serverUrl}
-            onChangeText={(text) => {
-              setServerUrl(text);
-              setServerUrlError('');
-            }}
-            autoCapitalize="none"
-            keyboardType="url"
-            error={serverUrlError}
-            hint={serverUrlError ? undefined : "https://example.odoo.com"}
-            leftIcon={
-              <IconButton
-                icon="web"
-                size={20}
-                iconColor={colors.primary}
-              />
-            }
-            returnKeyType="done"
-            onSubmitEditing={handleLogin}
-            blurOnSubmit={true}
-          />
-          
-          {/* Login Button */}
-          <View style={styles.buttonContainer}>
-            <AnimatedButton
-              onPress={handleLogin}
-              title={loading ? "Logging in..." : "Login"}
-              variant="primary"
-              disabled={loading}
-              loading={loading}
-            />
-          </View>
-          
-          {/* Proxy Info */}
-          {renderProxyInfo()}
-        </View>
-      </GlassCard>
+    return (
+      <View style={styles.logoContainer}>
+        <Text style={styles.logoText}>Odoo</Text>
+        <Text style={styles.logoSubtext}>Voice Assistant</Text>
+      </View>
     );
+  };
 
-    if (Platform.OS === 'web') {
-      return <View style={styles.cardContainer}>{cardContent}</View>;
-    } else {
-      return (
-        <Animated.View 
-          entering={FadeInUp.duration(1000).delay(300)}
-          style={styles.cardContainer}
-        >
-          {cardContent}
-        </Animated.View>
-      );
-    }
+  // Render the entire login form
+  const renderForm = () => {
+    return (
+      <View style={styles.formWrapper}>
+        <View style={styles.formBackground} />
+        <View style={styles.formContainer}>
+        {/* Username Input */}
+        <FloatingInput 
+          label="Username"
+          value={username}
+          onChangeText={(text) => {
+            setUsername(text);
+            setUsernameError('');
+          }}
+          autoCapitalize="none"
+          error={usernameError}
+          returnKeyType="next"
+          blurOnSubmit={false}
+        />
+        
+        {/* Password Input */}
+        <FloatingInput 
+          label="Password"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            setPasswordError('');
+          }}
+          secureTextEntry={!showPassword}
+          error={passwordError}
+          rightIcon={
+            <IconButton
+              icon={showPassword ? "eye-off" : "eye"}
+              size={20}
+              iconColor={colors.textSecondary}
+              onPress={() => setShowPassword(!showPassword)}
+            />
+          }
+          returnKeyType="next"
+          blurOnSubmit={false}
+        />
+        
+        {/* Server URL Input */}
+        <FloatingInput 
+          label="Odoo Server URL"
+          value={serverUrl}
+          onChangeText={(text) => {
+            setServerUrl(text);
+            setServerUrlError('');
+          }}
+          autoCapitalize="none"
+          keyboardType="url"
+          error={serverUrlError}
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
+          blurOnSubmit={true}
+        />
+        
+        {/* Login Button */}
+        <View style={styles.buttonContainer}>
+          <Button
+            mode="contained"
+            onPress={handleLogin}
+            loading={loading}
+            disabled={loading}
+            style={styles.loginButton}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </Button>
+        </View>
+        
+        {/* Proxy Info */}
+        <TouchableOpacity>
+          <Text style={styles.noteText}>
+            Connecting via proxy at {PROXY_SERVER_URL}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      </View>
+    );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.backgroundDark} />
       
-      {/* Animated Background */}
-      <AnimatedBackground />
+      {/* Background Video */}
+      <View style={styles.videoBackground}>
+        <Video
+          source={require('../../assets/video.mp4')}
+          style={styles.backgroundVideo}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping
+          isMuted
+          positionMillis={0}
+          onError={(error) => console.log('Video Error:', error)}
+        />
+        {/* Semi-transparent overlay for better text visibility */}
+        <View style={styles.gradientOverlay} />
+      </View>
       
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -339,9 +290,10 @@ const LoginScreen = () => {
         <ScrollView 
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {renderLogo()}
-          {renderCard()}
+          {renderForm()}
         </ScrollView>
 
         {/* Error Snackbar */}
@@ -368,65 +320,85 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundDark,
   },
+  videoBackground: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    zIndex: 0,
+    backgroundColor: colors.backgroundDark,
+  },
+  backgroundVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)', // Very light dark blue transparent overlay
+  },
   container: {
     flex: 1,
+    zIndex: 2,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: spacing.xl,
+    padding: spacing.lg,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
   },
   logoText: {
-    fontSize: 48,
+    fontSize: 42,
     fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 1.5,
+    letterSpacing: 1,
     textShadowColor: `${colors.primary}90`,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
   },
   logoSubtext: {
-    fontSize: 20,
-    color: colors.secondary,
-    marginTop: spacing.sm,
-    letterSpacing: 1,
-  },
-  cardContainer: {
-    width: '100%',
-    maxWidth: 450,
-    alignSelf: 'center',
-  },
-  loginTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  loginSubtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
+    color: colors.secondary,
+    marginTop: spacing.xs,
+    letterSpacing: 0.5,
+  },
+  formWrapper: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  formBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 16,
+    backdropFilter: 'blur(12px)',
   },
   formContainer: {
     width: '100%',
-    marginTop: spacing.md,
+    padding: spacing.md,
   },
   buttonContainer: {
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
-  snackbar: {
-    backgroundColor: colors.backgroundMedium,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.error,
-    marginBottom: spacing.md,
-    marginHorizontal: spacing.md,
+  loginButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 6,
   },
   errorSnackbar: {
     backgroundColor: colors.backgroundMedium,
@@ -439,7 +411,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     color: colors.textSecondary,
-    marginTop: spacing.lg,
+    marginTop: spacing.sm,
     fontStyle: 'italic',
   }
 });

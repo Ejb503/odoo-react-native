@@ -10,11 +10,11 @@ import {
   Text,
   NativeSyntheticEvent,
   TextInputFocusEventData,
-  TextInputProps
+  TextInputProps,
 } from 'react-native';
-import { colors, components, spacing, typography, createShadow } from '../utils/theme';
+import { colors, spacing } from '../utils/theme';
 
-interface FloatingInputProps extends TextInputProps {
+interface InputProps extends TextInputProps {
   label: string;
   value: string;
   onChangeText: (text: string) => void;
@@ -28,10 +28,9 @@ interface FloatingInputProps extends TextInputProps {
 }
 
 /**
- * FloatingInput provides a modern text input with animated floating label,
- * customizable styles, and error states following the app's design system.
+ * Premium, minimal input with perfect alignment and spacing
  */
-export const FloatingInput: React.FC<FloatingInputProps> = ({
+export const FloatingInput: React.FC<InputProps> = ({
   label,
   value,
   onChangeText,
@@ -48,36 +47,14 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [animatedIsFocused] = useState(new Animated.Value(value ? 1 : 0));
   
-  // Handle animation when focus changes or value changes
+  // Clean simple animation for label
   React.useEffect(() => {
     Animated.timing(animatedIsFocused, {
       toValue: (isFocused || value.length > 0) ? 1 : 0,
-      duration: 200,
+      duration: 150,
       useNativeDriver: false,
     }).start();
   }, [isFocused, value, animatedIsFocused]);
-  
-  // Animated styles for the floating label
-  const labelContainerStyle = {
-    position: 'absolute' as 'absolute',
-    left: leftIcon ? 40 : 16,
-    top: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 8],
-    }),
-    zIndex: 1,
-  };
-  
-  const labelTextStyle = {
-    fontSize: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [16, 12],
-    }),
-    color: animatedIsFocused.interpolate({
-      inputRange: [0, 1],
-      outputRange: [colors.textSecondary, isFocused ? colors.primary : colors.textMuted],
-    }),
-  };
   
   // Handle focus and blur events
   const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
@@ -94,46 +71,61 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
     }
   };
   
-  // Determine the border color based on focus state and error
-  const getBorderColor = () => {
+  // Set color states
+  const getLabelColor = () => {
     if (error) return colors.error;
     if (isFocused) return colors.primary;
-    return `${colors.textSecondary}30`; // Semi-transparent secondary
+    return colors.textSecondary;
+  };
+  
+  const getLineColor = () => {
+    if (error) return colors.error;
+    if (isFocused) return colors.primary;
+    return `${colors.textSecondary}30`;
+  };
+  
+  // Label animation styles
+  const labelAnimatedStyle = {
+    top: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [20, 0], // Move up when focused or has value
+    }),
+    fontSize: animatedIsFocused.interpolate({
+      inputRange: [0, 1],
+      outputRange: [16, 12],
+    }),
+    color: getLabelColor(),
   };
   
   return (
     <View style={[styles.container, containerStyle]}>
-      <View 
+      {/* Label */}
+      <Animated.Text 
         style={[
-          styles.inputContainer,
-          {
-            borderColor: getBorderColor(),
-            backgroundColor: `${colors.backgroundLight}70`,
-          },
-          isFocused ? styles.inputContainerFocused : undefined,
-          error ? styles.inputContainerError : undefined,
+          styles.label,
+          labelAnimatedStyle,
+          labelStyle
         ]}
       >
-        {/* Animated floating label */}
-        <Animated.View style={labelContainerStyle}>
-          <Animated.Text style={[styles.label, labelTextStyle, labelStyle]}>
-            {label}
-          </Animated.Text>
-        </Animated.View>
-        
-        {/* Left icon if provided */}
+        {label}
+      </Animated.Text>
+      
+      {/* Main input row */}
+      <View style={styles.inputRow}>
+        {/* Left icon with proper spacing */}
         {leftIcon && (
           <View style={styles.leftIconContainer}>
             {leftIcon}
           </View>
         )}
         
-        {/* Text input */}
+        {/* Input with perfect alignment */}
         <TextInput
           style={[
             styles.input,
-            leftIcon ? styles.inputWithLeftIcon : undefined,
-            rightIcon ? styles.inputWithRightIcon : undefined,
+            {paddingTop: value || isFocused ? 20 : 10},
+            leftIcon ? {marginLeft: 0} : undefined,
+            rightIcon ? {marginRight: 0} : undefined,
             inputStyle,
           ]}
           value={value}
@@ -141,12 +133,12 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
           onFocus={handleFocus}
           onBlur={handleBlur}
           selectionColor={colors.primary}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={`${colors.textSecondary}80`}
           secureTextEntry={secureTextEntry}
           {...restProps}
         />
         
-        {/* Right icon if provided */}
+        {/* Right icon with proper spacing */}
         {rightIcon && (
           <View style={styles.rightIconContainer}>
             {rightIcon}
@@ -154,12 +146,26 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
         )}
       </View>
       
-      {/* Error or hint text */}
+      {/* Bottom line with color change on focus/error */}
+      <View style={styles.lineContainer}>
+        <View 
+          style={[
+            styles.line, 
+            {backgroundColor: getLineColor()},
+            isFocused ? styles.activeLine : null
+          ]} 
+        />
+      </View>
+      
+      {/* Error or hint message */}
       {(error || hint) && (
-        <Text style={[
-          styles.helperText,
-          error ? styles.errorText : styles.hintText
-        ]}>
+        <Text 
+          style={[
+            styles.helperText,
+            error ? styles.errorText : styles.hintText
+          ]}
+          numberOfLines={1}
+        >
           {error || hint}
         </Text>
       )}
@@ -170,51 +176,55 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing.md,
-  },
-  inputContainer: {
-    height: components.input.height,
-    borderRadius: components.input.borderRadius,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
     position: 'relative',
-    ...createShadow(2, 'rgba(0,0,0,0.1)'),
-  },
-  inputContainerFocused: {
-    ...createShadow(4, `${colors.primary}40`),
-  },
-  inputContainerError: {
-    ...createShadow(4, `${colors.error}40`),
+    width: '100%',
   },
   label: {
+    position: 'absolute',
+    left: 0,
     fontWeight: '500',
+    letterSpacing: 0.2,
+    zIndex: 1,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    minHeight: 56,
+  },
+  leftIconContainer: {
+    marginRight: spacing.xs,
+  },
+  rightIconContainer: {
+    marginLeft: spacing.xs,
   },
   input: {
     flex: 1,
     color: colors.textPrimary,
-    fontSize: typography.fontSize.base,
-    fontWeight: '400',
-    height: '100%',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg, // Add extra padding on top for the label
-    paddingBottom: spacing.xs,
+    fontSize: 16,
+    paddingBottom: 8,
+    paddingTop: 20, // Space for the floating label
+    minHeight: 56,
   },
-  inputWithLeftIcon: {
-    paddingLeft: spacing.xs,
+  lineContainer: {
+    width: '100%',
+    height: 1,
+    backgroundColor: `${colors.textSecondary}20`,
+    marginTop: 0,
   },
-  inputWithRightIcon: {
-    paddingRight: spacing.xs,
+  line: {
+    height: 1,
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
   },
-  leftIconContainer: {
-    marginLeft: spacing.md,
-  },
-  rightIconContainer: {
-    marginRight: spacing.md,
+  activeLine: {
+    height: 2,
   },
   helperText: {
-    fontSize: typography.fontSize.xs,
-    marginTop: spacing.xs,
-    marginLeft: spacing.md,
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 2,
   },
   errorText: {
     color: colors.error,
