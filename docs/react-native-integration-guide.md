@@ -1,6 +1,30 @@
 # React Native Integration Guide for Odoo Proxy
 
-This guide provides instructions for integrating a React Native mobile app with the Odoo Proxy server.
+This guide provides instructions for integrating a React Native mobile app with the Odoo Proxy server. It covers authentication flow, API usage, WebSocket integration, and best practices for maintaining separation of concerns between your React Native app and the Odoo Proxy server.
+
+## Separation of Concerns
+
+The Odoo Proxy architecture is designed with a clear separation of concerns to maintain clean boundaries between your React Native app and the Odoo backend:
+
+### Server-Side (Odoo Proxy)
+- **Authentication Management**: Handles token generation, validation, and refresh
+- **Session Management**: Manages user sessions and device registration
+- **Data Transformation**: Converts Odoo data models into API-friendly formats
+- **Caching**: Implements efficient data caching to improve performance
+- **Error Handling**: Provides consistent error responses and logging
+- **Security**: Enforces access controls and data validation
+
+### Client-Side (React Native)
+- **UI/UX**: Renders the interface and handles user interactions
+- **State Management**: Manages application state using Context, Redux, etc.
+- **Token Storage**: Securely stores authentication tokens
+- **Network Communication**: Makes API requests to the Odoo Proxy server
+
+This separation ensures that:
+1. Your mobile app doesn't need to understand Odoo's internal API structure
+2. Changes to Odoo's API won't directly impact your mobile app
+3. Security is properly enforced at the server level
+4. Business logic is consistently applied across all clients
 
 ## Authentication Flow
 
@@ -37,50 +61,46 @@ const getDeviceInfo = async () => {
 
 ```javascript
 // Login with Odoo credentials
-export const login = async (username, password, serverUrl) => {
+export const login = async (username, password, odooUrl) => {
   try {
-    // Get or generate device ID
-    let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    // Get device info for authentication
     const deviceInfo = await getDeviceInfo();
     
     const response = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Device-Type': deviceInfo.deviceType,
-        'X-OS-Info': `${deviceInfo.os} ${deviceInfo.osVersion}`,
-        'X-App-Version': deviceInfo.appVersion,
-        ...(deviceId && { 'X-Device-ID': deviceId }),
       },
       body: JSON.stringify({
+        odooUrl,
         username,
         password,
-        serverUrl,
-        // If no device ID, register a new device
-        registerDevice: !deviceId,
-        deviceName: deviceInfo.deviceName,
-        deviceType: deviceInfo.deviceType,
-        deviceOs: deviceInfo.os,
-        deviceOsVersion: deviceInfo.osVersion,
-        appVersion: deviceInfo.appVersion,
+        deviceInfo: {
+          name: deviceInfo.deviceName,
+          type: deviceInfo.deviceType,
+          os: deviceInfo.os,
+          osVersion: deviceInfo.osVersion,
+          appVersion: deviceInfo.appVersion,
+        }
       }),
     });
     
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
+      throw new Error(data.error || data.message || 'Login failed');
     }
     
     // Store tokens and user data
     await AsyncStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
     await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-    if (data.deviceId) {
-      await AsyncStorage.setItem(DEVICE_ID_KEY, data.deviceId);
-    }
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
     
-    return data.user;
+    return {
+      user: data.user,
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken
+    };
   } catch (error) {
     console.error('Login error:', error);
     throw error;
@@ -95,7 +115,6 @@ export const login = async (username, password, serverUrl) => {
 export const refreshToken = async () => {
   try {
     const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-    const deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
     
     if (!refreshToken) {
       throw new Error('No refresh token available');
@@ -103,18 +122,20 @@ export const refreshToken = async () => {
     
     const deviceInfo = await getDeviceInfo();
     
-    const response = await fetch(`${API_URL}/auth/refresh-token`, {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Device-Type': deviceInfo.deviceType,
-        'X-OS-Info': `${deviceInfo.os} ${deviceInfo.osVersion}`,
-        'X-App-Version': deviceInfo.appVersion,
-        ...(deviceId && { 'X-Device-ID': deviceId }),
       },
       body: JSON.stringify({
         refreshToken,
-        deviceId,
+        deviceInfo: {
+          name: deviceInfo.deviceName,
+          type: deviceInfo.deviceType,
+          os: deviceInfo.os,
+          osVersion: deviceInfo.osVersion,
+          appVersion: deviceInfo.appVersion,
+        }
       }),
     });
     
@@ -124,12 +145,17 @@ export const refreshToken = async () => {
       // Clear tokens if refresh failed
       await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
       await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
-      throw new Error(data.message || 'Token refresh failed');
+      await AsyncStorage.removeItem(USER_KEY);
+      throw new Error(data.error || data.message || 'Token refresh failed');
     }
     
     // Store new tokens
     await AsyncStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    
+    // Store new refresh token if provided
+    if (data.refreshToken) {
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+    }
     
     return data.accessToken;
   } catch (error) {
@@ -145,6 +171,7 @@ export const refreshToken = async () => {
 // Create authenticated API client
 export const createApiClient = () => {
   let accessToken = null;
+  let tokenRefreshPromise = null;
   
   const getToken = async () => {
     if (!accessToken) {
@@ -155,7 +182,15 @@ export const createApiClient = () => {
   
   // Fetch with automatic token refresh
   const fetchWithAuth = async (url, options = {}) => {
+    // If there's already a token refresh in progress, wait for it to complete
+    if (tokenRefreshPromise) {
+      await tokenRefreshPromise;
+    }
+    
     const token = await getToken();
+    if (!token) {
+      throw new Error('Not authenticated. Please login first.');
+    }
     
     const headers = {
       ...options.headers,
@@ -171,7 +206,10 @@ export const createApiClient = () => {
       // If unauthorized, try to refresh token
       if (response.status === 401) {
         try {
-          accessToken = await refreshToken();
+          // Create a single refresh promise to prevent multiple refresh attempts
+          tokenRefreshPromise = refreshToken();
+          accessToken = await tokenRefreshPromise;
+          tokenRefreshPromise = null;
           
           // Retry request with new token
           return fetch(url, {
@@ -184,12 +222,24 @@ export const createApiClient = () => {
         } catch (refreshError) {
           // If refresh fails, redirect to login
           accessToken = null;
+          tokenRefreshPromise = null;
           await logout();
           throw new Error('Session expired. Please log in again.');
         }
       }
       
-      return response;
+      // Parse JSON response
+      if (response.ok) {
+        if (response.headers.get('content-type')?.includes('application/json')) {
+          const data = await response.json();
+          return data;
+        }
+        return response;
+      } else {
+        // Handle error responses
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || `Request failed with status ${response.status}`);
+      }
     } catch (error) {
       console.error('API request error:', error);
       throw error;
@@ -197,17 +247,73 @@ export const createApiClient = () => {
   };
   
   return {
-    get: (url, options = {}) => fetchWithAuth(url, { ...options, method: 'GET' }),
-    post: (url, data, options = {}) => fetchWithAuth(url, {
-      ...options,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: JSON.stringify(data),
-    }),
-    // Add other methods as needed: put, delete, etc.
+    // Generic Odoo model access
+    getRecords: (model, params = {}) => 
+      fetchWithAuth(`${API_URL}/api/odoo/models/${model}?${new URLSearchParams(params)}`),
+    
+    getRecord: (model, id, params = {}) => 
+      fetchWithAuth(`${API_URL}/api/odoo/models/${model}/${id}?${new URLSearchParams(params)}`),
+    
+    createRecord: (model, data) => 
+      fetchWithAuth(`${API_URL}/api/odoo/models/${model}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    
+    updateRecord: (model, id, data) => 
+      fetchWithAuth(`${API_URL}/api/odoo/models/${model}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    
+    deleteRecord: (model, id) => 
+      fetchWithAuth(`${API_URL}/api/odoo/models/${model}/${id}`, {
+        method: 'DELETE',
+      }),
+    
+    // Direct Odoo API call (more flexible)
+    callOdooMethod: (model, method, args = [], kwargs = {}) => 
+      fetchWithAuth(`${API_URL}/api/odoo/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          method,
+          args,
+          kwargs
+        }),
+      }),
+    
+    // Standard REST methods
+    get: (url, options = {}) => 
+      fetchWithAuth(`${API_URL}${url}`, { ...options, method: 'GET' }),
+    
+    post: (url, data, options = {}) => 
+      fetchWithAuth(`${API_URL}${url}`, {
+        ...options,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        body: JSON.stringify(data),
+      }),
+    
+    put: (url, data, options = {}) => 
+      fetchWithAuth(`${API_URL}${url}`, {
+        ...options,
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        body: JSON.stringify(data),
+      }),
+    
+    delete: (url, options = {}) => 
+      fetchWithAuth(`${API_URL}${url}`, { ...options, method: 'DELETE' }),
   };
 };
 ```
@@ -219,33 +325,47 @@ export const logout = async () => {
   try {
     const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
     const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-    const deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
     
-    if (token) {
+    if (token && refreshToken) {
       // Call logout endpoint
       await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          ...(deviceId && { 'X-Device-ID': deviceId }),
         },
         body: JSON.stringify({
           refreshToken,
-          deviceId,
         }),
-      }).catch(() => {
-        // Ignore errors on logout request
+      }).catch((error) => {
+        // Log but don't block on logout errors
+        console.warn('Logout request failed:', error);
       });
     }
     
-    // Clear local storage
+    // Close active WebSocket connections
+    if (typeof closeSocket === 'function') {
+      closeSocket();
+    }
+    
+    // Clear auth data from storage
     await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
     await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
     await AsyncStorage.removeItem(USER_KEY);
-    // Don't remove device ID to maintain device identity
+    
+    // Optionally clear any cached data
+    // Here you would clear any app-specific cached data
+    
+    return true;
   } catch (error) {
     console.error('Logout error:', error);
+    
+    // Still remove tokens even if server logout failed
+    await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+    await AsyncStorage.removeItem(USER_KEY);
+    
+    return false;
   }
 };
 ```
@@ -267,8 +387,7 @@ export const initializeSocket = async () => {
   // Only initialize once
   if (socket && socket.connected) return socket;
   
-  const token = await AsyncStorage.getItem('access_token');
-  const deviceId = await AsyncStorage.getItem('device_id');
+  const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
   
   if (!token) {
     throw new Error('Authentication required');
@@ -278,7 +397,6 @@ export const initializeSocket = async () => {
   socket = io(SOCKET_URL, {
     auth: {
       token,
-      deviceId,
     },
     reconnection: true,
     reconnectionAttempts: Infinity,
@@ -651,16 +769,26 @@ export default PartnerList;
    - Minimize WebSocket message size
    - Use pagination for large datasets
    - Implement efficient list rendering with FlatList
+   - Implement request batching for multiple related requests
 
 5. **Security:**
    - Never store raw passwords
    - Use HTTPS for all communication
    - Implement certificate pinning for added security
+   - Secure storage of tokens using encrypted storage when possible
+   - Clear sensitive data from memory when not needed
 
-6. **User Experience:**
+6. **Rate Limiting and Throttling:**
+   - Implement retry with exponential backoff for failed requests
+   - Respect server-side rate limits (check response headers)
+   - Bundle requests where possible to reduce API calls
+   - Cache responses to avoid duplicate requests
+
+7. **User Experience:**
    - Provide background reconnection with visual indicators
    - Implement graceful degradation when WebSocket is unavailable
    - Use skeleton screens during loading
+   - Provide feedback for long-running operations
 
 ## Troubleshooting
 
