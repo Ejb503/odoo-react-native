@@ -38,7 +38,7 @@ interface AnimatedButtonProps {
   textStyle?: StyleProp<TextStyle>;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  gradientColors?: string[];
+  gradientColors?: [string, string, ...string[]];
 }
 
 /**
@@ -74,7 +74,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   };
 
   // Determine button colors based on variant
-  const getButtonColors = () => {
+  const getButtonColors = (): [string, string, ...string[]] => {
     switch (variant) {
       case "primary":
         return gradientColors || [colors.primary, `${colors.secondary}CC`];

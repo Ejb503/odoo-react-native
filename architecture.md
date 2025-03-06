@@ -1,11 +1,13 @@
 # Application Architecture
 
 ## Overview
+
 This React Native application serves as a client for an Odoo Proxy server, using voice input and the Model Context Protocol SDK (MCP) to interact with Odoo services via secure WebSocket connections and REST API endpoints.
 
 ## Implemented Architecture
 
 ### 1. Authentication Layer
+
 - **LoginScreen**: Collects username, password, and Odoo server URL
 - **AuthService**: Handles JWT authentication with the Odoo Proxy server
 - **AsyncStorage**: Securely stores authentication tokens and session data
@@ -13,6 +15,7 @@ This React Native application serves as a client for an Odoo Proxy server, using
 - **Token Refresh**: Automatic refresh of expired tokens with error handling
 
 ### 2. Communication Layer
+
 - **MCPService**: Real-time communication with the Odoo Proxy server via MCP SDK
 - **WebSocket Connection**: Maintains persistent connection for real-time updates
 - **REST API Fallback**: Alternative communication channel when WebSockets unavailable
@@ -20,12 +23,14 @@ This React Native application serves as a client for an Odoo Proxy server, using
 - **Error handling**: Comprehensive error handling for network failures and API errors
 
 ### 3. Voice Processing Layer
+
 - **VoiceInput Component**: Uses React Native Voice for speech recognition
 - **Speech-to-text conversion**: Captures and processes voice input
 - **Query processing**: Sends text queries to MCP service
 - **Visual feedback**: Shows listening and processing states
 
 ### 4. UI & Design Layer
+
 - **React Navigation**: Handles screen transitions and navigation stack
 - **React Native Paper**: Provides design system components
 - **React Native Reanimated**: Powers fluid animations throughout the app
@@ -36,6 +41,7 @@ This React Native application serves as a client for an Odoo Proxy server, using
 - **Design System**: Consistent theming based on [theming guidelines](./theming.md)
 
 ### 5. State Management
+
 - **Redux**: Global state management using Redux Toolkit
 - **Auth slice**: Manages authentication state and tokens
 - **Local state**: Component-level state for UI interactions
@@ -43,11 +49,13 @@ This React Native application serves as a client for an Odoo Proxy server, using
 - **Persistent storage**: Saves session data between app launches
 
 ### 6. Configuration Management
+
 - **Config Module**: Centralized configuration management
 - **Environment Variables**: Default values for development and production
 - **Constants**: Application-wide constants for consistent usage
 
 ## Project Structure
+
 ```
 /src
   /api
@@ -77,7 +85,9 @@ This React Native application serves as a client for an Odoo Proxy server, using
 
 - **Framework**: React Native with Expo
 - **Navigation**: React Navigation for screen management
-- **State Management**: Redux Toolkit with typed hooks
+- **State Management**: Redux Toolkit (v1.9.7) with typed hooks
+  - Note: Specifically using Redux Toolkit 1.9.7 and React Redux 8.1.3 for React Native compatibility
+  - RTK 2.0+ has module resolution issues with Metro bundler's CommonJS handling
 - **Authentication**: JWT token-based authentication with refresh
 - **Networking**: WebSocket for real-time communication with REST fallback
 - **Storage**: AsyncStorage for secure token and session storage
@@ -109,6 +119,7 @@ The application now integrates with a real Odoo Proxy server, handling:
 6. ✅ WebSocket connections to Odoo Proxy
 
 ## Next Steps
+
 1. Implement premium UI/UX following the [theming guidelines](./theming.md)
 2. Create animated background and fluid transitions between screens
 3. Enhance voice recognition with additional language support
