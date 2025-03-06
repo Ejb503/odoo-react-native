@@ -252,19 +252,34 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
       [colors.primary, colors.accent, colors.info]
     );
     
-    // Apply scale and color animations
-    return {
-      transform: [{ scale: scale.value }],
-      backgroundColor: !voiceState.isAvailable ? `${colors.textMuted}80` : backgroundColor,
-    };
+    // Apply scale and color animations - handle web compatibility
+    if (Platform.OS === 'web') {
+      return {
+        transform: `scale(${scale.value})`,
+        backgroundColor: !voiceState.isAvailable ? `${colors.textMuted}80` : backgroundColor,
+      };
+    } else {
+      return {
+        transform: [{ scale: scale.value }],
+        backgroundColor: !voiceState.isAvailable ? `${colors.textMuted}80` : backgroundColor,
+      };
+    }
   });
   
   // Ripple animated style
   const rippleAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: rippleOpacity.value,
-      transform: [{ scale: rippleScale.value }],
-    };
+    // Handle web compatibility for transform styles
+    if (Platform.OS === 'web') {
+      return {
+        opacity: rippleOpacity.value,
+        transform: `scale(${rippleScale.value})`,
+      };
+    } else {
+      return {
+        opacity: rippleOpacity.value,
+        transform: [{ scale: rippleScale.value }],
+      };
+    }
   });
   
   // Determine if voice input should be disabled

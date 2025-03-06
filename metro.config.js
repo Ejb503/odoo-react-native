@@ -25,7 +25,44 @@ module.exports = (() => {
         inlineRequires: true,
       },
     }),
+    minifierPath: require.resolve('metro-minify-terser'),
+    minifierConfig: {
+      // Terser options for better minification
+      compress: {
+        reduce_vars: true,
+        inline: true,
+      },
+      mangle: {
+        toplevel: true,
+      },
+    },
   };
+
+  // Add server configuration with better network handling
+  config.server = {
+    ...config.server,
+    enhanceMiddleware: (middleware) => {
+      return (req, res, next) => {
+        // Add CORS headers
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        
+        // Add caching headers
+        res.setHeader('Cache-Control', 'no-cache');
+        return middleware(req, res, next);
+      };
+    },
+    port: 8081,
+  };
+
+  // Configure caching
+  config.cacheStores = [
+    {
+      name: 'local',
+      maxSize: 1024 * 1024 * 50, // 50mb
+    },
+  ];
   
   return config;
 })();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Dimensions, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, useWindowDimensions } from 'react-native';
 import { 
   Text, 
   Card, 
@@ -11,8 +11,11 @@ import {
   Badge,
   ActivityIndicator
 } from 'react-native-paper';
+import Animated, { FadeIn, SlideInUp } from 'react-native-reanimated';
+import { Platform } from 'react-native';
 import { MCPResponse, MCPErrorResponse } from '../api/mcpService';
-import { colors } from '../utils/theme';
+import { colors, spacing, createShadow } from '../utils/theme';
+import GlassCard from './GlassCard';
 
 interface MCPResponseRendererProps {
   response: MCPResponse | null;
@@ -39,26 +42,66 @@ const MCPResponseRenderer: React.FC<MCPResponseRendererProps> = ({ response }) =
 
   if (isEmptyResponse) {
     return (
-      <Surface style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No data available</Text>
-      </Surface>
+      <Animated.View entering={FadeIn.duration(300)}>
+        <GlassCard style={styles.emptyContainer} elevation={2}>
+          <IconButton 
+            icon="information-outline" 
+            size={28} 
+            iconColor={colors.textSecondary}
+          />
+          <Text style={styles.emptyText}>No data available</Text>
+        </GlassCard>
+      </Animated.View>
     );
   }
 
+  // Different rendering for web vs native for better compatibility
+  if (Platform.OS === 'web') {
+    return (
+      <ScrollView style={styles.container}>
+        <View>
+          <GlassCard style={styles.card} elevation={4}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>{getResponseTitle(response)}</Text>
+              <Chip 
+                mode="outlined" 
+                style={styles.typeChip}
+                textStyle={{ color: colors.primary }}
+              >
+                {response.type}
+              </Chip>
+            </View>
+            <Divider style={styles.divider} />
+            <View>
+              {renderContent(response, { setImageLoading, imageLoading, screenWidth: width })}
+            </View>
+          </GlassCard>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // Native platforms with animations
   return (
     <ScrollView style={styles.container}>
-      <Card style={styles.card} elevation={2}>
-        <Card.Title
-          title={getResponseTitle(response)}
-          right={(props) => (
-            <Chip {...props} mode="outlined" style={styles.typeChip}>
+      <Animated.View entering={FadeIn.duration(500)}>
+        <GlassCard style={styles.card} elevation={4}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>{getResponseTitle(response)}</Text>
+            <Chip 
+              mode="outlined" 
+              style={styles.typeChip}
+              textStyle={{ color: colors.primary }}
+            >
               {response.type}
             </Chip>
-          )}
-        />
-        <Divider />
-        {renderContent(response, { setImageLoading, imageLoading, screenWidth: width })}
-      </Card>
+          </View>
+          <Divider style={styles.divider} />
+          <Animated.View entering={SlideInUp.duration(400).delay(200)}>
+            {renderContent(response, { setImageLoading, imageLoading, screenWidth: width })}
+          </Animated.View>
+        </GlassCard>
+      </Animated.View>
     </ScrollView>
   );
 };
@@ -189,30 +232,48 @@ const renderContent = (
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 10,
+    marginVertical: spacing.md,
     width: '100%',
   },
   card: {
-    marginHorizontal: 8,
-    marginBottom: 16,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
     overflow: 'hidden',
   },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    letterSpacing: 0.3,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: `${colors.textPrimary}15`,
+  },
   contentPadding: {
-    padding: 16,
+    padding: spacing.lg,
   },
   imagePadding: {
-    padding: 8,
+    padding: spacing.md,
     alignItems: 'center',
   },
   tablePadding: {
-    padding: 8,
+    padding: spacing.md,
   },
   textResponse: {
     fontSize: 16,
     lineHeight: 24,
+    color: colors.textPrimary,
   },
   image: {
-    borderRadius: 8,
+    borderRadius: 12,
+    ...createShadow(3, colors.backgroundLight),
   },
   imageLoaderContainer: {
     position: 'absolute',
@@ -227,26 +288,30 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.textPrimary}10`,
   },
   listItemBadge: {
     backgroundColor: colors.primary,
-    marginRight: 12,
+    marginRight: spacing.md,
     marginTop: 2,
   },
   listItemText: {
     fontSize: 16,
     flex: 1,
     lineHeight: 22,
+    color: colors.textPrimary,
   },
   table: {
     minWidth: '100%',
   },
   tableHeader: {
-    backgroundColor: colors.primary + '15',
+    backgroundColor: `${colors.backgroundLight}80`,
   },
   tableHeaderCell: {
-    padding: 4,
+    padding: spacing.sm,
     justifyContent: 'center',
   },
   tableHeaderText: {
@@ -255,31 +320,35 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   tableRowEven: {
-    backgroundColor: colors.background,
+    backgroundColor: `${colors.backgroundMedium}50`,
   },
   tableRowOdd: {
-    backgroundColor: colors.surface,
+    backgroundColor: `${colors.backgroundLight}30`,
   },
   tableCell: {
-    padding: 4,
+    padding: spacing.sm,
     justifyContent: 'center',
   },
   tableCellText: {
     fontSize: 14,
+    color: colors.textPrimary,
   },
   errorContent: {
-    padding: 0,
+    padding: spacing.sm,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.error + '15',
-    padding: 16,
-    borderRadius: 4,
+    backgroundColor: `${colors.backgroundLight}70`,
+    padding: spacing.md,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+    ...createShadow(2, `${colors.error}30`),
   },
   errorIcon: {
     margin: 0,
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   errorTextContainer: {
     flex: 1,
@@ -287,28 +356,31 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.error,
     fontSize: 16,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   errorCode: {
-    color: colors.error + 'AA',
+    color: colors.textSecondary,
     fontSize: 12,
   },
   emptyContainer: {
-    padding: 20,
-    marginHorizontal: 12,
-    marginTop: 8,
-    marginBottom: 16,
+    padding: spacing.xl,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
+    backgroundColor: `${colors.backgroundMedium}80`,
+    ...createShadow(2, colors.backgroundLight),
   },
   emptyText: {
-    color: colors.text + '80',
+    color: colors.textSecondary,
     fontSize: 16,
+    letterSpacing: 0.3,
   },
   typeChip: {
-    margin: 8,
-    backgroundColor: colors.primary + '20',
+    backgroundColor: `${colors.backgroundLight}50`,
+    borderColor: `${colors.primary}40`,
   },
 });
 

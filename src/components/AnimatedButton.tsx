@@ -6,7 +6,8 @@ import {
   Text, 
   StyleProp, 
   ViewStyle, 
-  TextStyle 
+  TextStyle,
+  Platform
 } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
@@ -15,17 +16,25 @@ import Animated, {
   withTiming,
   interpolateColor
 } from 'react-native-reanimated';
-// Conditional import to handle web compatibility
+import { colors, components, createShadow, animationPresets } from '../utils/theme';
+
+// Handle web compatibility for LinearGradient
 let LinearGradient: any;
-try {
-  LinearGradient = require('react-native-linear-gradient').default;
-} catch (error) {
-  // Fallback for web - simple View
-  LinearGradient = ({ children, style, colors, start, end }: any) => (
+if (Platform.OS === 'web') {
+  // Simple fallback for web
+  LinearGradient = ({ children, style, colors }: any) => (
     <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>
   );
+} else {
+  try {
+    LinearGradient = require('react-native-linear-gradient').LinearGradient;
+  } catch (error) {
+    // Additional fallback
+    LinearGradient = ({ children, style, colors }: any) => (
+      <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>
+    );
+  }
 }
-import { colors, components, createShadow, animationPresets } from '../utils/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'text';
 type ButtonSize = 'normal' | 'compact';
@@ -95,8 +104,13 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
     // Increase brightness slightly when pressed
     const brightness = pressed.value * 0.1;
     
+    // Handle web compatibility for transform
+    const transformStyle = Platform.OS === 'web'
+      ? { transform: `scale(${scale.value})` }
+      : { transform: [{ scale: scale.value }] };
+      
     return {
-      transform: [{ scale: scale.value }],
+      ...transformStyle,
       opacity: disabled ? 0.6 : 1,
       backgroundColor: variant === 'text' ? 'transparent' : undefined,
     };
@@ -174,7 +188,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
           style
         ]}
       >
-        {variant === 'primary' ? (
+        {variant === 'primary' && Platform.OS !== 'web' ? (
           <LinearGradient
             colors={buttonColors}
             start={{ x: 0, y: 0 }}
@@ -188,7 +202,9 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
             style={[
               styles.container, 
               { 
-                backgroundColor: buttonColors[0],
+                backgroundColor: variant === 'primary' && Platform.OS === 'web' 
+                  ? buttonColors[0] 
+                  : buttonColors[0],
                 borderWidth: variant === 'secondary' ? 1 : 0,
                 borderColor: variant === 'secondary' ? `${colors.primary}30` : undefined,
               }

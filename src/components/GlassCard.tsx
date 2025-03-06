@@ -1,7 +1,7 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
-import { colors, components, createShadow } from '../utils/theme';
+import { StyleSheet, View, ViewStyle, StyleProp, Platform } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { colors, components, createShadow } from '../utils/theme';
 
 interface GlassCardProps {
   children: ReactNode;
@@ -28,11 +28,18 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   const animatedStyle = useAnimatedStyle(() => {
     if (!animated) return {};
     
-    return {
-      transform: [
-        { scale: withTiming(1.0, { duration: 200 }) },
-      ],
-    };
+    // Handle web compatibility with transform style
+    if (Platform.OS === 'web') {
+      return {
+        transform: `scale(${withTiming(1.0, { duration: 200 })})`,
+      };
+    } else {
+      return {
+        transform: [
+          { scale: withTiming(1.0, { duration: 200 }) },
+        ],
+      };
+    }
   });
 
   // Combine base styles with shadow and any custom styles
@@ -40,17 +47,34 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     styles.card,
     createShadow(elevation, glowColor),
     style,
-    animated ? animatedStyle : null,
   ];
 
-  // Use Animated.View if animated, otherwise regular View
-  const CardComponent = animated ? Animated.View : View;
+  // Handle web platform separately for better compatibility
+  if (Platform.OS === 'web') {
+    return (
+      <View style={combinedStyles}>
+        <View style={styles.glassOverlay} />
+        <View style={styles.content}>{children}</View>
+      </View>
+    );
+  }
 
+  // For native platforms, use all animations
+  if (animated) {
+    return (
+      <Animated.View style={[...combinedStyles, animatedStyle]}>
+        <View style={styles.glassOverlay} />
+        <View style={styles.content}>{children}</View>
+      </Animated.View>
+    );
+  }
+
+  // For non-animated native
   return (
-    <CardComponent style={combinedStyles}>
+    <View style={combinedStyles}>
       <View style={styles.glassOverlay} />
       <View style={styles.content}>{children}</View>
-    </CardComponent>
+    </View>
   );
 };
 

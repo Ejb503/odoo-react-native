@@ -59,7 +59,7 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
   
   // Animated styles for the floating label
   const labelContainerStyle = {
-    position: 'absolute',
+    position: 'absolute' as 'absolute',
     left: leftIcon ? 40 : 16,
     top: animatedIsFocused.interpolate({
       inputRange: [0, 1],
@@ -110,8 +110,8 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
             borderColor: getBorderColor(),
             backgroundColor: `${colors.backgroundLight}70`,
           },
-          isFocused && styles.inputContainerFocused,
-          error && styles.inputContainerError,
+          isFocused ? styles.inputContainerFocused : undefined,
+          error ? styles.inputContainerError : undefined,
         ]}
       >
         {/* Animated floating label */}
@@ -132,8 +132,8 @@ export const FloatingInput: React.FC<FloatingInputProps> = ({
         <TextInput
           style={[
             styles.input,
-            leftIcon && styles.inputWithLeftIcon,
-            rightIcon && styles.inputWithRightIcon,
+            leftIcon ? styles.inputWithLeftIcon : undefined,
+            rightIcon ? styles.inputWithRightIcon : undefined,
             inputStyle,
           ]}
           value={value}

@@ -1,23 +1,18 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, useWindowDimensions, Platform, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Canvas, Skia, Path, vec, useValue, useComputedValue, useClockValue, Shadow } from '@shopify/react-native-skia';
-import { useDerivedValue, interpolate } from 'react-native-reanimated';
+import { useDerivedValue } from 'react-native-reanimated';
 import { colors } from '../utils/theme';
 
-/**
- * AnimatedBackground component creates a fluid, animated background with flowing
- * gradient-like patterns using React Native Skia.
- * 
- * It renders multiple animated paths with subtle movement to create a futuristic,
- * premium look that responds to time-based animation.
- */
-export const AnimatedBackground: React.FC = () => {
-  // For web platform, return a simple colored background
-  if (Platform.OS === 'web') {
-    return <View style={styles.canvas} />;
-  }
+interface SkiaBackgroundProps {
+  style?: ViewStyle;
+}
 
-  // Below code will only run on native platforms
+/**
+ * SkiaBackground component that uses Skia for native platforms
+ * This file is imported dynamically and only used on native, not web
+ */
+const SkiaBackground: React.FC<SkiaBackgroundProps> = ({ style }) => {
   const { width, height } = useWindowDimensions();
   const clock = useClockValue();
   
@@ -160,7 +155,7 @@ export const AnimatedBackground: React.FC = () => {
   }, [width, height, wave3]);
 
   return (
-    <Canvas style={styles.canvas}>
+    <Canvas style={[styles.canvas, style]}>
       {/* Primary blob - purple */}
       <Path 
         path={path1}
@@ -216,4 +211,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AnimatedBackground;
+export default SkiaBackground;
