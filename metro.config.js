@@ -56,13 +56,9 @@ module.exports = (() => {
     port: 8081,
   };
 
-  // Configure caching
-  config.cacheStores = [
-    {
-      name: 'local',
-      maxSize: 1024 * 1024 * 50, // 50mb
-    },
-  ];
+  // Configure caching - use the standard cache system instead of custom stores
+  config.cacheVersion = "1.0";
+  config.resetCache = false;
   
   return config;
 })();

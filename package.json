@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "test": "jest",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clear-cache": "rm -rf node_modules/.cache && expo start -c"
   },
   "keywords": [
     "odoo",
@@ -37,6 +38,7 @@
     "expo": "~49.0.15",
     "expo-status-bar": "~1.6.0",
     "metro": "0.76.7",
+    "metro-cache": "0.76.7",
     "metro-core": "0.76.7",
     "metro-runtime": "0.76.7",
     "node-fetch": "^2.7.0",
