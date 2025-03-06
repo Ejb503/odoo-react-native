@@ -1,68 +1,78 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  ScrollView, 
-  Pressable, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Pressable,
   Platform,
   Dimensions,
-  StatusBar
-} from 'react-native';
-import { 
-  Appbar, 
-  Text, 
-  Chip, 
-  Divider, 
+  StatusBar,
+} from "react-native";
+import {
+  Appbar,
+  Text,
+  Chip,
+  Divider,
   Snackbar,
   Portal,
   Dialog,
   ActivityIndicator,
   IconButton,
-  Avatar
-} from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInDown, FadeInRight, SlideInRight } from 'react-native-reanimated';
+  Avatar,
+} from "react-native-paper";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInRight,
+  SlideInRight,
+} from "react-native-reanimated";
 
-import { RootStackParamList } from '../App';
-import { useAppDispatch } from '../hooks/useAppDispatch';
-import { useAppSelector } from '../hooks/useAppSelector';
-import { logoutThunk } from '../state/slices/authSlice';
-import { mcpService, MCPResponse } from '../api/mcpService';
-import VoiceInput from '../components/VoiceInput';
-import MCPResponseRenderer from '../components/MCPResponseRenderer';
-import AnimatedBackground from '../components/AnimatedBackground';
-import GlassCard from '../components/GlassCard';
-import AnimatedButton from '../components/AnimatedButton';
-import { colors, spacing, createShadow } from '../utils/theme';
+import { RootStackParamList } from "../App";
+import { useAppDispatch } from "../hooks/useAppDispatch";
+import { useAppSelector } from "../hooks/useAppSelector";
+import { logoutThunk } from "../state/slices/authSlice";
+import { mcpService, MCPResponse } from "../api/mcpService";
+// import VoiceInput from '../components/VoiceInput';
+import MCPResponseRenderer from "../components/MCPResponseRenderer";
+import AnimatedBackground from "../components/AnimatedBackground";
+import GlassCard from "../components/GlassCard";
+import AnimatedButton from "../components/AnimatedButton";
+import { colors, spacing, createShadow } from "../utils/theme";
 
-type MainScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
+type MainScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Main"
+>;
 
 // Example queries for the user to try
 const EXAMPLE_QUERIES = [
-  'Show me open sales orders',
-  'List inventory items low on stock',
-  'Generate sales report for this month',
-  'Show me a chart of monthly revenue',
-  'Hello',
-  'What are my invoices?'
+  "Show me open sales orders",
+  "List inventory items low on stock",
+  "Generate sales report for this month",
+  "Show me a chart of monthly revenue",
+  "Hello",
+  "What are my invoices?",
 ];
 
 // Categories for organizing responses
 const CATEGORIES = {
-  SALES: 'Sales',
-  INVENTORY: 'Inventory',
-  FINANCE: 'Finance',
-  REPORTING: 'Reporting',
-  OTHER: 'Other'
+  SALES: "Sales",
+  INVENTORY: "Inventory",
+  FINANCE: "Finance",
+  REPORTING: "Reporting",
+  OTHER: "Other",
 };
 
 const MainScreen = () => {
   const navigation = useNavigation<MainScreenNavigationProp>();
   const dispatch = useAppDispatch();
-  const { token, username, serverUrl, user } = useAppSelector(state => state.auth);
-  
+  const { token, username, serverUrl, user } = useAppSelector(
+    (state) => state.auth
+  );
+
   // State
   const [isProcessing, setIsProcessing] = useState(false);
   const [mcpResponse, setMcpResponse] = useState<MCPResponse | null>(null);
@@ -73,9 +83,9 @@ const MainScreen = () => {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showFullHistory, setShowFullHistory] = useState(false);
-  
+
   // Get device dimensions for responsive layout
-  const windowWidth = Dimensions.get('window').width;
+  const windowWidth = Dimensions.get("window").width;
   const isTablet = windowWidth >= 768;
 
   // Connect to MCP service when the component mounts
@@ -84,18 +94,20 @@ const MainScreen = () => {
       if (token && serverUrl) {
         setIsConnecting(true);
         setError(null);
-        
+
         try {
           // Connect to MCP service
           const connected = await mcpService.connect(serverUrl, token);
           setIsMCPConnected(connected);
-          
+
           if (!connected) {
-            setError('Unable to connect to the MCP service. Using fallback mode.');
+            setError(
+              "Unable to connect to the MCP service. Using fallback mode."
+            );
           }
         } catch (err) {
-          console.error('Failed to connect to MCP service', err);
-          setError('Connection error: Failed to connect to MCP service');
+          console.error("Failed to connect to MCP service", err);
+          setError("Connection error: Failed to connect to MCP service");
         } finally {
           setIsConnecting(false);
         }
@@ -119,19 +131,19 @@ const MainScreen = () => {
   // Handle logout
   const handleLogout = useCallback(async () => {
     setShowLogoutDialog(false);
-    
+
     try {
       // Disconnect from MCP service
       await mcpService.disconnect();
-      
+
       // Dispatch logout action
       await dispatch(logoutThunk());
-      
+
       // Navigate to login screen
-      navigation.replace('Login');
+      navigation.replace("Login");
     } catch (err) {
-      console.error('Logout error', err);
-      setError('Failed to logout. Please try again.');
+      console.error("Logout error", err);
+      setError("Failed to logout. Please try again.");
     }
   }, [dispatch, navigation]);
 
@@ -148,7 +160,7 @@ const MainScreen = () => {
       "Show sales report",
       "Generate chart for monthly sales",
       "Hello",
-      "What are my tasks?"
+      "What are my tasks?",
     ];
     // Pick a random query from the list
     const randomIndex = Math.floor(Math.random() * mockQueries.length);
@@ -159,14 +171,14 @@ const MainScreen = () => {
   // Process a query and update the UI
   const processQuery = useCallback(async (query: string) => {
     setIsProcessing(true);
-    
+
     try {
       // Process the query through MCP service
       const response = await mcpService.processQuery(query);
       setMcpResponse(response);
-      
+
       // Add to previous queries, keeping only the last 10
-      setPreviousQueries(prev => {
+      setPreviousQueries((prev) => {
         // Don't add duplicates
         if (prev.includes(query)) {
           return prev;
@@ -174,11 +186,11 @@ const MainScreen = () => {
         return [query, ...prev.slice(0, 9)];
       });
     } catch (err) {
-      console.error('Error processing query', err);
+      console.error("Error processing query", err);
       setMcpResponse({
-        type: 'error',
-        content: 'Failed to process your request. Please try again.',
-        code: 'PROCESSING_ERROR'
+        type: "error",
+        content: "Failed to process your request. Please try again.",
+        code: "PROCESSING_ERROR",
       });
     } finally {
       setIsProcessing(false);
@@ -195,20 +207,24 @@ const MainScreen = () => {
     if (!selectedCategory) {
       return EXAMPLE_QUERIES;
     }
-    
+
     // Filter example queries based on selected category
     // This is a simple implementation - in a real app, you would have more sophisticated categorization
-    return EXAMPLE_QUERIES.filter(query => {
+    return EXAMPLE_QUERIES.filter((query) => {
       const lowerQuery = query.toLowerCase();
       switch (selectedCategory) {
         case CATEGORIES.SALES:
-          return lowerQuery.includes('sales') || lowerQuery.includes('order');
+          return lowerQuery.includes("sales") || lowerQuery.includes("order");
         case CATEGORIES.INVENTORY:
-          return lowerQuery.includes('inventory') || lowerQuery.includes('stock');
+          return (
+            lowerQuery.includes("inventory") || lowerQuery.includes("stock")
+          );
         case CATEGORIES.FINANCE:
-          return lowerQuery.includes('invoice') || lowerQuery.includes('payment');
+          return (
+            lowerQuery.includes("invoice") || lowerQuery.includes("payment")
+          );
         case CATEGORIES.REPORTING:
-          return lowerQuery.includes('report') || lowerQuery.includes('chart');
+          return lowerQuery.includes("report") || lowerQuery.includes("chart");
         default:
           return true;
       }
@@ -224,85 +240,98 @@ const MainScreen = () => {
   }, [previousQueries, showFullHistory]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.backgroundDark} />
-      
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={colors.backgroundDark}
+      />
+
       {/* Animated Background */}
       <AnimatedBackground />
-      
+
       {/* App Bar with Glass Effect */}
       <Animated.View entering={FadeInDown.duration(800)}>
         <GlassCard style={styles.appBar} elevation={4}>
           <View style={styles.appBarContent}>
             <View style={styles.appBarLeft}>
-              <Avatar.Image 
-                size={36} 
-                source={{uri: 'https://www.odoo.com/web/image/website/1/logo/Odoo?unique=aaa901b'}} 
+              <Avatar.Image
+                size={36}
+                source={{
+                  uri: "https://www.odoo.com/web/image/website/1/logo/Odoo?unique=aaa901b",
+                }}
                 style={styles.logoImage}
               />
               <View>
                 <Text style={styles.appBarTitle}>Odoo Voice Assistant</Text>
-                <Text style={styles.appBarSubtitle}>{user?.name || username}</Text>
+                <Text style={styles.appBarSubtitle}>
+                  {user?.name || username}
+                </Text>
               </View>
             </View>
-            
+
             <View style={styles.appBarRight}>
-              <IconButton 
-                icon={isMCPConnected ? "wifi" : "wifi-off"} 
+              <IconButton
+                icon={isMCPConnected ? "wifi" : "wifi-off"}
                 iconColor={isMCPConnected ? colors.success : colors.error}
                 size={24}
               />
-              <IconButton 
-                icon="logout" 
+              <IconButton
+                icon="logout"
                 iconColor={colors.textPrimary}
                 size={24}
-                onPress={() => setShowLogoutDialog(true)} 
+                onPress={() => setShowLogoutDialog(true)}
               />
             </View>
           </View>
         </GlassCard>
       </Animated.View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
         {/* Connection Status */}
-        <Animated.View 
+        <Animated.View
           style={styles.connectionStatus}
           entering={FadeIn.duration(800).delay(300)}
         >
           <Text style={styles.connectionLabel}>Connection Status: </Text>
           {isConnecting ? (
-            <ActivityIndicator size={20} color={colors.primary} style={{marginLeft: 8}} />
+            <ActivityIndicator
+              size={20}
+              color={colors.primary}
+              style={{ marginLeft: 8 }}
+            />
           ) : (
-            <Chip 
-              icon={isMCPConnected ? "check-circle" : "close-circle"} 
-              mode="outlined" 
+            <Chip
+              icon={isMCPConnected ? "check-circle" : "close-circle"}
+              mode="outlined"
               style={[
-                styles.statusChip, 
-                isMCPConnected ? styles.connected : styles.disconnected
+                styles.statusChip,
+                isMCPConnected ? styles.connected : styles.disconnected,
               ]}
-              textStyle={{ color: isMCPConnected ? colors.success : colors.error }}
+              textStyle={{
+                color: isMCPConnected ? colors.success : colors.error,
+              }}
             >
-              {isMCPConnected ? 'Connected' : 'Fallback Mode'}
+              {isMCPConnected ? "Connected" : "Fallback Mode"}
             </Chip>
           )}
         </Animated.View>
 
         {/* Render the MCP response */}
         {mcpResponse && (
-          <Animated.View 
+          <Animated.View
             style={styles.responseContainer}
             entering={FadeInDown.duration(500)}
           >
             <GlassCard style={styles.responseCard}>
               <View style={styles.responseHeader}>
                 <Text style={styles.sectionTitle}>Response</Text>
-                <IconButton 
-                  icon="close" 
+                <IconButton
+                  icon="close"
                   size={20}
-                  iconColor={colors.textSecondary} 
+                  iconColor={colors.textSecondary}
                   onPress={clearResponse}
                   accessibilityLabel="Clear response"
                 />
@@ -312,37 +341,40 @@ const MainScreen = () => {
           </Animated.View>
         )}
 
-        {/* Voice input component */}
-        <Animated.View 
-          style={styles.voiceInputContainer}
-          entering={FadeInDown.duration(800).delay(200)}
-        >
-          <VoiceInput 
-            onSpeechResult={handleSpeechResult}
+        {/* Voice Input - Temporarily disabled */}
+        {/*<View style={styles.voiceInputContainer}>
+          <VoiceInput
+            onSpeechResult={processQuery}
             isProcessing={isProcessing}
           />
-        </Animated.View>
+        </View>*/}
 
         {/* Mock response button and helper text */}
-        <Animated.View 
+        <Animated.View
           style={styles.mockContainer}
           entering={FadeInDown.duration(800).delay(400)}
         >
-          <AnimatedButton 
+          <AnimatedButton
             title="Generate Sample Response"
             onPress={generateMockResponse}
-            leftIcon={<IconButton icon="waveform" size={20} iconColor={colors.textPrimary} />}
+            leftIcon={
+              <IconButton
+                icon="waveform"
+                size={20}
+                iconColor={colors.textPrimary}
+              />
+            }
           />
           <Text style={styles.helperText}>
-            {Platform.OS === 'web' 
-              ? 'Voice input is not available on web. Use this button to test responses.' 
-              : 'Use the microphone above or tap this button to test.'}
+            {Platform.OS === "web"
+              ? "Voice input is not available on web. Use this button to test responses."
+              : "Use the microphone above or tap this button to test."}
           </Text>
         </Animated.View>
 
         {/* Previous queries history */}
         {previousQueries.length > 0 && (
-          <Animated.View 
+          <Animated.View
             style={styles.historyContainer}
             entering={FadeInDown.duration(800).delay(500)}
           >
@@ -350,7 +382,7 @@ const MainScreen = () => {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Recent Queries</Text>
                 {previousQueries.length > 3 && (
-                  <AnimatedButton 
+                  <AnimatedButton
                     title={showFullHistory ? "Show Less" : "Show All"}
                     variant="text"
                     size="compact"
@@ -358,13 +390,15 @@ const MainScreen = () => {
                   />
                 )}
               </View>
-              <ScrollView 
-                horizontal={!isTablet} 
+              <ScrollView
+                horizontal={!isTablet}
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={isTablet ? styles.historyGridContainer : undefined}
+                contentContainerStyle={
+                  isTablet ? styles.historyGridContainer : undefined
+                }
               >
                 {getVisibleHistory().map((query, index) => (
-                  <Animated.View 
+                  <Animated.View
                     key={index}
                     entering={SlideInRight.duration(300).delay(index * 50)}
                   >
@@ -373,13 +407,13 @@ const MainScreen = () => {
                       style={({ pressed }) => [
                         styles.historyItem,
                         isTablet && styles.historyItemTablet,
-                        pressed && styles.itemPressed
+                        pressed && styles.itemPressed,
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel={`Previous query: ${query}`}
                     >
-                      <Text 
-                        style={styles.historyText} 
+                      <Text
+                        style={styles.historyText}
                         numberOfLines={1}
                         ellipsizeMode="tail"
                       >
@@ -396,7 +430,7 @@ const MainScreen = () => {
         <Divider style={styles.divider} />
 
         {/* Category filters */}
-        <Animated.View 
+        <Animated.View
           style={styles.categoryContainer}
           entering={FadeInDown.duration(800).delay(600)}
         >
@@ -426,7 +460,7 @@ const MainScreen = () => {
         </Animated.View>
 
         {/* Example queries */}
-        <Animated.View 
+        <Animated.View
           style={styles.examplesContainer}
           entering={FadeInDown.duration(800).delay(700)}
         >
@@ -434,14 +468,14 @@ const MainScreen = () => {
             <Text style={styles.sectionTitle}>Try Asking</Text>
             <View style={styles.examplesGrid}>
               {getFilteredExamples().map((query, index) => (
-                <Animated.View 
-                  key={index} 
+                <Animated.View
+                  key={index}
                   entering={FadeIn.duration(400).delay(100 + index * 100)}
                 >
                   <Pressable
                     style={({ pressed }) => [
                       styles.exampleItem,
-                      pressed && styles.itemPressed
+                      pressed && styles.itemPressed,
                     ]}
                     onPress={() => processQuery(query)}
                     accessibilityRole="button"
@@ -461,9 +495,9 @@ const MainScreen = () => {
         visible={!!error}
         onDismiss={() => setError(null)}
         action={{
-          label: 'Dismiss',
+          label: "Dismiss",
           onPress: () => setError(null),
-          labelStyle: { color: colors.primary }
+          labelStyle: { color: colors.primary },
         }}
         duration={4000}
         style={styles.errorSnackbar}
@@ -473,28 +507,30 @@ const MainScreen = () => {
 
       {/* Logout confirmation dialog */}
       <Portal>
-        <Dialog 
-          visible={showLogoutDialog} 
+        <Dialog
+          visible={showLogoutDialog}
           onDismiss={() => setShowLogoutDialog(false)}
           style={{
             backgroundColor: colors.backgroundMedium,
             borderRadius: 16,
-            ...createShadow(8, `${colors.primary}40`)
+            ...createShadow(8, `${colors.primary}40`),
           }}
         >
-          <Dialog.Title style={{ color: colors.textPrimary }}>Logout Confirmation</Dialog.Title>
+          <Dialog.Title style={{ color: colors.textPrimary }}>
+            Logout Confirmation
+          </Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: colors.textSecondary }}>
               Are you sure you want to logout?
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <AnimatedButton 
+            <AnimatedButton
               title="Cancel"
               variant="text"
               onPress={() => setShowLogoutDialog(false)}
             />
-            <AnimatedButton 
+            <AnimatedButton
               title="Logout"
               variant="primary"
               onPress={handleLogout}
@@ -525,21 +561,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   appBarContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   appBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   appBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   appBarTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
     marginLeft: spacing.md,
   },
@@ -550,12 +586,12 @@ const styles = StyleSheet.create({
   },
   logoImage: {
     marginRight: spacing.sm,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   // Connection Status
   connectionStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: spacing.lg,
   },
   connectionLabel: {
@@ -564,7 +600,7 @@ const styles = StyleSheet.create({
   },
   statusChip: {
     marginLeft: spacing.sm,
-    borderColor: `${colors.textPrimary}30`
+    borderColor: `${colors.textPrimary}30`,
   },
   connected: {
     backgroundColor: `${colors.success}20`,
@@ -583,27 +619,27 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   responseHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.sm,
   },
   // Voice Input
   voiceInputContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: spacing.md,
   },
   // Mock Controls
   mockContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.xl,
   },
   helperText: {
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: spacing.sm,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    textAlign: "center",
+    fontStyle: "italic",
   },
   // History
   historyContainer: {
@@ -613,20 +649,20 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.textPrimary,
     letterSpacing: 0.3,
   },
   historyGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: spacing.xs,
   },
   historyItem: {
@@ -642,7 +678,7 @@ const styles = StyleSheet.create({
     ...createShadow(2, colors.primary),
   },
   historyItemTablet: {
-    maxWidth: '48%',
+    maxWidth: "48%",
     flexGrow: 1,
   },
   historyText: {
@@ -670,8 +706,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   examplesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: spacing.md,
   },
   exampleItem: {
@@ -679,7 +715,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: 12,
     margin: 4,
-    maxWidth: '48%',
+    maxWidth: "48%",
     flexGrow: 1,
     borderWidth: 1,
     borderColor: `${colors.secondary}50`,
@@ -688,7 +724,7 @@ const styles = StyleSheet.create({
   exampleText: {
     fontSize: 14,
     color: colors.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   // Error
   errorSnackbar: {

@@ -1,43 +1,31 @@
-import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  TouchableWithoutFeedback, 
-  View, 
-  Text, 
-  StyleProp, 
-  ViewStyle, 
+import React, { useState } from "react";
+import {
+  StyleSheet,
+  TouchableWithoutFeedback,
+  View,
+  Text,
+  StyleProp,
+  ViewStyle,
   TextStyle,
-  Platform
-} from 'react-native';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring, 
+  Platform,
+} from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
   withTiming,
-  interpolateColor
-} from 'react-native-reanimated';
-import { colors, components, createShadow, animationPresets } from '../utils/theme';
+  interpolateColor,
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  colors,
+  components,
+  createShadow,
+  animationPresets,
+} from "../utils/theme";
 
-// Handle web compatibility for LinearGradient
-let LinearGradient: any;
-if (Platform.OS === 'web') {
-  // Simple fallback for web
-  LinearGradient = ({ children, style, colors }: any) => (
-    <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>
-  );
-} else {
-  try {
-    LinearGradient = require('react-native-linear-gradient').LinearGradient;
-  } catch (error) {
-    // Additional fallback
-    LinearGradient = ({ children, style, colors }: any) => (
-      <View style={[style, { backgroundColor: colors[0] }]}>{children}</View>
-    );
-  }
-}
-
-type ButtonVariant = 'primary' | 'secondary' | 'text';
-type ButtonSize = 'normal' | 'compact';
+type ButtonVariant = "primary" | "secondary" | "text";
+type ButtonSize = "normal" | "compact";
 
 interface AnimatedButtonProps {
   onPress: () => void;
@@ -60,8 +48,8 @@ interface AnimatedButtonProps {
 export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   onPress,
   title,
-  variant = 'primary',
-  size = 'normal',
+  variant = "primary",
+  size = "normal",
   disabled = false,
   loading = false,
   style,
@@ -73,105 +61,108 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   // Animation values
   const scale = useSharedValue(1);
   const pressed = useSharedValue(0);
-  
+
   // Handle button press animations
   const handlePressIn = () => {
     scale.value = withSpring(0.97, animationPresets.spring);
     pressed.value = withTiming(1, { duration: 150 });
   };
-  
+
   const handlePressOut = () => {
     scale.value = withSpring(1, animationPresets.spring);
     pressed.value = withTiming(0, { duration: 200 });
   };
-  
+
   // Determine button colors based on variant
   const getButtonColors = () => {
     switch (variant) {
-      case 'primary':
+      case "primary":
         return gradientColors || [colors.primary, `${colors.secondary}CC`];
-      case 'secondary':
+      case "secondary":
         return [colors.backgroundLight, colors.backgroundLight];
-      case 'text':
-        return ['transparent', 'transparent'];
+      case "text":
+        return ["transparent", "transparent"];
       default:
         return [colors.primary, `${colors.secondary}CC`];
     }
   };
-  
+
   // Animated styles for button scaling and glow effects
   const animatedStyles = useAnimatedStyle(() => {
-    // Increase brightness slightly when pressed
-    const brightness = pressed.value * 0.1;
-    
     // Handle web compatibility for transform
-    const transformStyle = Platform.OS === 'web'
-      ? { transform: `scale(${scale.value})` }
-      : { transform: [{ scale: scale.value }] };
-      
+    const transformStyle =
+      Platform.OS === "web"
+        ? { transform: `scale(${scale.value})` }
+        : { transform: [{ scale: scale.value }] };
+
     return {
       ...transformStyle,
       opacity: disabled ? 0.6 : 1,
-      backgroundColor: variant === 'text' ? 'transparent' : undefined,
+      backgroundColor: variant === "text" ? "transparent" : undefined,
     };
   });
-  
+
   // Animated styles for text color changes
   const textAnimatedStyle = useAnimatedStyle(() => {
     let textColor;
-    
+
     switch (variant) {
-      case 'primary':
+      case "primary":
         textColor = colors.textPrimary;
         break;
-      case 'secondary':
+      case "secondary":
         textColor = colors.primary;
         break;
-      case 'text':
+      case "text":
         textColor = colors.primary;
         break;
       default:
         textColor = colors.textPrimary;
     }
-    
+
     // Brighten text slightly when pressed for 'secondary' and 'text' variants
-    if (variant !== 'primary') {
+    if (variant !== "primary") {
       const brighterColor = interpolateColor(
         pressed.value,
         [0, 1],
         [textColor, colors.secondary]
       );
-      
+
       return { color: brighterColor };
     }
-    
+
     return { color: textColor };
   });
-  
+
   // Determine button height based on size
-  const buttonHeight = size === 'compact' 
-    ? components.button.compactHeight 
-    : components.button.height;
-  
+  const buttonHeight =
+    size === "compact"
+      ? components.button.compactHeight
+      : components.button.height;
+
   // Get button colors for gradient or solid background
   const buttonColors = getButtonColors();
-  
+
   // Apply drop shadow effect only to primary and secondary buttons
-  const shadowStyle = (variant === 'primary' || variant === 'secondary') 
-    ? createShadow(4, variant === 'primary' ? colors.primary : 'rgba(0,0,0,0.15)')
-    : {};
-  
+  const shadowStyle =
+    variant === "primary" || variant === "secondary"
+      ? createShadow(
+          4,
+          variant === "primary" ? colors.primary : "rgba(0,0,0,0.15)"
+        )
+      : {};
+
   // Render button content (text and icons)
   const renderContent = () => (
     <View style={styles.contentContainer}>
       {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
       <Animated.Text style={[styles.text, textAnimatedStyle, textStyle]}>
-        {loading ? 'Loading...' : title}
+        {loading ? "Loading..." : title}
       </Animated.Text>
       {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
     </View>
   );
-  
+
   // Render the button with appropriate styling based on variant
   return (
     <TouchableWithoutFeedback
@@ -179,16 +170,16 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       onPressIn={!disabled && !loading ? handlePressIn : undefined}
       onPressOut={!disabled && !loading ? handlePressOut : undefined}
     >
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.button, 
+          styles.button,
           { height: buttonHeight },
           shadowStyle,
           animatedStyles,
-          style
+          style,
         ]}
       >
-        {variant === 'primary' && Platform.OS !== 'web' ? (
+        {variant === "primary" ? (
           <LinearGradient
             colors={buttonColors}
             start={{ x: 0, y: 0 }}
@@ -198,16 +189,15 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
             {renderContent()}
           </LinearGradient>
         ) : (
-          <View 
+          <View
             style={[
-              styles.container, 
-              { 
-                backgroundColor: variant === 'primary' && Platform.OS === 'web' 
-                  ? buttonColors[0] 
-                  : buttonColors[0],
-                borderWidth: variant === 'secondary' ? 1 : 0,
-                borderColor: variant === 'secondary' ? `${colors.primary}30` : undefined,
-              }
+              styles.container,
+              {
+                backgroundColor: buttonColors[0],
+                borderWidth: variant === "secondary" ? 1 : 0,
+                borderColor:
+                  variant === "secondary" ? `${colors.primary}30` : undefined,
+              },
             ]}
           >
             {renderContent()}
@@ -221,30 +211,30 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     borderRadius: components.button.borderRadius,
-    overflow: 'hidden',
+    overflow: "hidden",
     minWidth: 90,
   },
   gradient: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: components.button.borderRadius,
   },
   contentContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
   },
   text: {
     fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+    fontWeight: "600",
+    textAlign: "center",
   },
   iconLeft: {
     marginRight: 8,
