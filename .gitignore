@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 .expo/
+android/
+ios/
 
 # Compiled output
 dist/
