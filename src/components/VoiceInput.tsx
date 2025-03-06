@@ -1,13 +1,27 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, StyleSheet, Pressable, Platform, Animated, Easing } from 'react-native';
-import { Text, ActivityIndicator, Surface, IconButton } from 'react-native-paper';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Text, Surface, IconButton } from 'react-native-paper';
 import Voice, { 
   SpeechResultsEvent, 
   SpeechErrorEvent,
   SpeechStartEvent,
   SpeechEndEvent
 } from '@react-native-voice/voice';
-import { colors } from '../utils/theme';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming, 
+  withRepeat, 
+  withSequence,
+  withSpring,
+  withDelay,
+  Easing,
+  FadeIn,
+  ZoomIn,
+  interpolateColor
+} from 'react-native-reanimated';
+import { Canvas, Circle, Paint } from '@shopify/react-native-skia';
+import { colors, spacing, createShadow, timing } from '../utils/theme';
 
 interface VoiceInputProps {
   onSpeechResult: (text: string) => void;
@@ -39,64 +53,76 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     error: null
   });
 
-  // Animation values
-  const pulseAnim = useMemo(() => new Animated.Value(1), []);
-  const rippleAnim = useMemo(() => new Animated.Value(0), []);
+  // Animation values using Reanimated
+  const scale = useSharedValue(1);
+  const rippleScale = useSharedValue(0);
+  const rippleOpacity = useSharedValue(0.7);
+  const buttonBgColor = useSharedValue(0); // 0 = idle, 1 = listening, 2 = processing
+  const waveAmplitude = useSharedValue(0);
+  const waveFrequency = useSharedValue(0);
   
-  // Start pulse animation when listening
+  // Control animations based on state
   useEffect(() => {
-    let pulseAnimation: Animated.CompositeAnimation;
-    let rippleAnimation: Animated.CompositeAnimation;
-    
-    if (voiceState.isListening) {
-      // Pulse animation for the mic button
-      pulseAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 800,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true
-          })
-        ])
-      );
-      
-      // Ripple animation for the listening effect
-      rippleAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(rippleAnim, {
-            toValue: 1,
-            duration: 2000,
-            easing: Easing.out(Easing.ease),
-            useNativeDriver: true
-          }),
-          Animated.timing(rippleAnim, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true
-          })
-        ])
-      );
-      
-      pulseAnimation.start();
-      rippleAnimation.start();
+    // Update button color state
+    if (isProcessing) {
+      buttonBgColor.value = withTiming(2, { duration: timing.normal });
+    } else if (voiceState.isListening) {
+      buttonBgColor.value = withTiming(1, { duration: timing.normal });
+      // Start wave animation
+      waveAmplitude.value = withTiming(1, { duration: timing.normal });
+      waveFrequency.value = withTiming(1, { duration: timing.normal });
+    } else {
+      buttonBgColor.value = withTiming(0, { duration: timing.normal });
+      // Stop wave animation
+      waveAmplitude.value = withTiming(0, { duration: timing.normal });
+      waveFrequency.value = withTiming(0, { duration: timing.normal });
     }
     
-    return () => {
-      if (pulseAnimation) {
-        pulseAnimation.stop();
-      }
-      if (rippleAnimation) {
-        rippleAnimation.stop();
-      }
-    };
-  }, [voiceState.isListening, pulseAnim, rippleAnim]);
+    // Button scale animation when listening
+    if (voiceState.isListening) {
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.1, { duration: timing.slow, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: timing.slow, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1, // Infinite repeat
+        true // Reverse sequence
+      );
+      
+      // Ripple effect animation
+      rippleScale.value = 0;
+      rippleOpacity.value = 0.7;
+      
+      // Create staggered ripple animations
+      const createRipple = () => {
+        rippleScale.value = withTiming(2.2, { duration: timing.slow * 2 });
+        rippleOpacity.value = withTiming(0, { duration: timing.slow * 2 });
+        
+        // Reset for next ripple
+        const timeout = setTimeout(() => {
+          if (voiceState.isListening) {
+            rippleScale.value = 0;
+            rippleOpacity.value = 0.7;
+            createRipple();
+          }
+        }, timing.slow * 1.5);
+        
+        return timeout;
+      };
+      
+      const timeout = createRipple();
+      
+      // Cleanup
+      return () => {
+        clearTimeout(timeout);
+        scale.value = withTiming(1, { duration: timing.normal });
+      };
+    } else {
+      // Reset animations when not listening
+      scale.value = withTiming(1, { duration: timing.normal });
+    }
+    
+  }, [voiceState.isListening, isProcessing]);
 
   // Initialize voice recognition
   useEffect(() => {
@@ -217,21 +243,31 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     }
   }, [voiceState.isListening, startListening, stopListening]);
 
-  // Calculate ripple styles based on animation
-  const rippleStyle = {
-    transform: [
-      { scale: rippleAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 2]
-      })},
-    ],
-    opacity: rippleAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.6, 0]
-    })
-  };
-
-  // Disable the voice input if not available or currently processing
+  // Create animated styles with Reanimated
+  const buttonAnimatedStyle = useAnimatedStyle(() => {
+    // Interpolate background color based on state
+    const backgroundColor = interpolateColor(
+      buttonBgColor.value,
+      [0, 1, 2],
+      [colors.primary, colors.accent, colors.info]
+    );
+    
+    // Apply scale and color animations
+    return {
+      transform: [{ scale: scale.value }],
+      backgroundColor: !voiceState.isAvailable ? `${colors.textMuted}80` : backgroundColor,
+    };
+  });
+  
+  // Ripple animated style
+  const rippleAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: rippleOpacity.value,
+      transform: [{ scale: rippleScale.value }],
+    };
+  });
+  
+  // Determine if voice input should be disabled
   const isDisabled = !voiceState.isAvailable || isProcessing;
   
   // Get status text based on current state
@@ -242,75 +278,105 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     return 'Tap to speak';
   };
 
-  // Get button color based on current state
-  const getButtonColor = () => {
-    if (!voiceState.isAvailable) return colors.text;
-    if (isProcessing) return colors.info;
-    if (voiceState.isListening) return colors.accent;
-    return colors.primary;
-  };
-
   return (
     <View style={styles.container}>
+      {/* Error display with animated entry */}
       {voiceState.error && (
-        <Surface style={styles.errorContainer} elevation={1}>
-          <Text style={styles.errorText}>{voiceState.error}</Text>
-          <IconButton 
-            icon="close-circle" 
-            size={16} 
-            onPress={() => setVoiceState(prev => ({ ...prev, error: null }))}
-            accessibilityLabel="Dismiss error"
-          />
-        </Surface>
+        <Animated.View entering={FadeIn.duration(300)}>
+          <Surface style={styles.errorContainer} elevation={1}>
+            <Text style={styles.errorText}>{voiceState.error}</Text>
+            <IconButton 
+              icon="close-circle" 
+              size={16} 
+              iconColor={colors.error}
+              onPress={() => setVoiceState(prev => ({ ...prev, error: null }))}
+              accessibilityLabel="Dismiss error"
+            />
+          </Surface>
+        </Animated.View>
       )}
       
       <View style={styles.micContainer}>
-        {/* Ripple effect when listening */}
+        {/* Sound wave visualization using Skia (only visible when listening) */}
         {voiceState.isListening && (
-          <Animated.View 
-            style={[styles.ripple, rippleStyle, { backgroundColor: getButtonColor() }]} 
-          />
+          <View style={styles.waveContainer}>
+            <Canvas style={styles.canvas}>
+              <Circle cx={60} cy={60} r={50}>
+                <Paint
+                  color={`${colors.accent}15`}
+                  style="fill"
+                />
+              </Circle>
+            </Canvas>
+          </View>
         )}
         
-        {/* Main microphone button */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.voiceButton,
-              { backgroundColor: getButtonColor() },
-              isDisabled && styles.disabled,
-              pressed && styles.pressed
-            ]}
-            onPress={toggleListening}
-            disabled={isDisabled}
-            accessibilityLabel="Voice input button"
-            accessibilityHint="Tap to start or stop voice recognition"
-            accessibilityRole="button"
-            accessibilityState={{ 
-              disabled: isDisabled,
-              busy: voiceState.isListening || isProcessing
-            }}
+        {/* Animated ripple effect */}
+        <Animated.View 
+          style={[
+            styles.ripple, 
+            rippleAnimatedStyle, 
+            { backgroundColor: colors.accent }
+          ]} 
+        />
+        
+        {/* Main microphone button with animations */}
+        <Animated.View 
+          style={[styles.voiceButton, buttonAnimatedStyle, createShadow(5, colors.primary)]}
+          entering={ZoomIn.duration(400)}
+        >
+          <Animated.View>
+            <View 
+              style={styles.pressableArea}
+              onTouchEnd={!isDisabled ? toggleListening : undefined}
+              accessibilityLabel="Voice input button"
+              accessibilityHint="Tap to start or stop voice recognition"
+              accessibilityRole="button"
+              accessibilityState={{ 
+                disabled: isDisabled,
+                busy: voiceState.isListening || isProcessing
+              }}
           >
             {isProcessing ? (
-              <ActivityIndicator color="#fff" size={30} />
+              // Processing indicator - uses custom animated elements
+              <View style={styles.processingContainer}>
+                <View style={styles.dot} />
+                <View style={[styles.dot, { marginHorizontal: 4 }]} />
+                <View style={styles.dot} />
+              </View>
             ) : (
+              // Custom microphone icon with glowing effect
               <View style={styles.microphoneIcon}>
                 <View style={styles.micTop} />
                 <View style={styles.micBody} />
                 <View style={styles.micBottom} />
               </View>
             )}
-          </Pressable>
+          </View>
+          </Animated.View>
         </Animated.View>
       </View>
       
-      <Text style={styles.statusText}>{getStatusText()}</Text>
+      {/* Status text with animated color changes */}
+      <Animated.Text 
+        style={[
+          styles.statusText,
+          { color: voiceState.isListening ? colors.accent : colors.textPrimary }
+        ]}
+      >
+        {getStatusText()}
+      </Animated.Text>
       
-      {/* Show partial results while listening */}
+      {/* Partial results with animated entry */}
       {voiceState.isListening && voiceState.partialResults.length > 0 && (
-        <Text style={styles.partialResultText} numberOfLines={1} ellipsizeMode="tail">
+        <Animated.Text 
+          entering={FadeIn.duration(300)}
+          style={styles.partialResultText} 
+          numberOfLines={1} 
+          ellipsizeMode="tail"
+        >
           {voiceState.partialResults[0]}
-        </Text>
+        </Animated.Text>
       )}
     </View>
   );
@@ -320,15 +386,27 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 20,
+    marginVertical: spacing.xl,
     width: '100%',
   },
   micContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: 110,
-    width: 110,
-    marginBottom: 8,
+    height: 120,
+    width: 120,
+    marginBottom: spacing.md,
+    position: 'relative',
+  },
+  waveContainer: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  canvas: {
+    width: 120,
+    height: 120,
   },
   voiceButton: {
     width: 80,
@@ -337,28 +415,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
     zIndex: 2,
+    borderWidth: 1,
+    borderColor: `${colors.textPrimary}20`,
+  },
+  pressableArea: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 40,
   },
   ripple: {
     position: 'absolute',
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.accent,
-    opacity: 0.3,
+    backgroundColor: `${colors.accent}40`,
     zIndex: 1,
   },
-  disabled: {
-    backgroundColor: colors.text + '80', // Add transparency
-    elevation: 2,
-  },
   pressed: {
-    opacity: 0.7,
+    opacity: 0.9,
     transform: [{ scale: 0.98 }],
   },
   microphoneIcon: {
@@ -370,42 +447,61 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textPrimary,
+    shadowColor: colors.textPrimary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   micBody: {
     width: 8,
     height: 18,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textPrimary,
   },
   micBottom: {
     width: 22,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#fff',
+    backgroundColor: colors.textPrimary,
+  },
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.textPrimary,
   },
   statusText: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     fontSize: 16,
-    color: colors.text,
     fontWeight: '500',
+    letterSpacing: 0.5,
   },
   partialResultText: {
-    marginTop: 12,
+    marginTop: spacing.md,
     fontSize: 14,
     color: colors.accent,
     maxWidth: '90%',
     textAlign: 'center',
     fontStyle: 'italic',
+    letterSpacing: 0.2,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    padding: spacing.sm,
     paddingRight: 0,
-    borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#ffebee',
+    borderRadius: 12,
+    marginBottom: spacing.md,
+    backgroundColor: `${colors.backgroundMedium}CC`,
     maxWidth: '90%',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+    ...createShadow(3, `${colors.error}40`),
   },
   errorText: {
     color: colors.error,

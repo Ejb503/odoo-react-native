@@ -2,15 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   StyleSheet, 
   View, 
-  SafeAreaView, 
   ScrollView, 
   Pressable, 
   Platform,
-  Dimensions
+  Dimensions,
+  StatusBar
 } from 'react-native';
 import { 
   Appbar, 
-  Button, 
   Text, 
   Chip, 
   Divider, 
@@ -23,6 +22,8 @@ import {
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown, FadeInRight, SlideInRight } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../App';
 import { useAppDispatch } from '../hooks/useAppDispatch';
@@ -31,7 +32,10 @@ import { logoutThunk } from '../state/slices/authSlice';
 import { mcpService, MCPResponse } from '../api/mcpService';
 import VoiceInput from '../components/VoiceInput';
 import MCPResponseRenderer from '../components/MCPResponseRenderer';
-import { colors } from '../utils/theme';
+import AnimatedBackground from '../components/AnimatedBackground';
+import GlassCard from '../components/GlassCard';
+import AnimatedButton from '../components/AnimatedButton';
+import { colors, spacing, createShadow } from '../utils/theme';
 
 type MainScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 

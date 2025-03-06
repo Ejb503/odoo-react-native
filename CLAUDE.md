@@ -65,9 +65,21 @@ npm run typecheck
 - React Native Secure Store for token storage
 - Axios for HTTP requests (if needed alongside websockets)
 - React Native Paper for UI components
+- React Native Reanimated for animations
+- React Native Skia for complex visual effects
 
 ## MCP SDK Integration Notes
 - Initialize MCP connection after successful authentication
 - Handle websocket reconnection automatically
 - Process voice commands through MCP pipeline
 - Render different response types based on MCP result type
+
+## Design & Theming
+See [theming.md](./theming.md) for comprehensive theming guidelines, including:
+- Color palette
+- Typography
+- Animation principles
+- Component styling
+- Accessibility considerations
+- Voice UI elements
+- Implementation guidance

@@ -25,12 +25,15 @@ This React Native application serves as a client for an Odoo Proxy server, using
 - **Query processing**: Sends text queries to MCP service
 - **Visual feedback**: Shows listening and processing states
 
-### 4. UI Layer
+### 4. UI & Design Layer
 - **React Navigation**: Handles screen transitions and navigation stack
-- **React Native Paper**: Provides Material Design components
-- **LoginScreen**: Authentication form with real-time validation
+- **React Native Paper**: Provides design system components
+- **React Native Reanimated**: Powers fluid animations throughout the app
+- **React Native Skia**: Delivers high-performance visual effects
+- **LoginScreen**: Animated authentication form with real-time validation
 - **MainScreen**: Voice-centric interface with dynamic response display
 - **MCPResponseRenderer**: Renders different response types with appropriate visualizations
+- **Design System**: Consistent theming based on [theming guidelines](./theming.md)
 
 ### 5. State Management
 - **Redux**: Global state management using Redux Toolkit
@@ -79,7 +82,10 @@ This React Native application serves as a client for an Odoo Proxy server, using
 - **Networking**: WebSocket for real-time communication with REST fallback
 - **Storage**: AsyncStorage for secure token and session storage
 - **Voice Processing**: React Native Voice package
-- **UI Components**: React Native Paper for Material Design
+- **UI Components**: React Native Paper for design system components
+- **Animations**: React Native Reanimated for fluid animations
+- **Visual Effects**: React Native Skia for high-performance graphics
+- **Theming**: Custom design system following [theming guidelines](./theming.md)
 - **Testing**: Jest and React Native Testing Library
 
 ## Integration with Odoo Proxy
@@ -103,8 +109,11 @@ The application now integrates with a real Odoo Proxy server, handling:
 6. ✅ WebSocket connections to Odoo Proxy
 
 ## Next Steps
-1. Enhance voice recognition with additional language support
-2. Implement text-to-speech for voice responses
-3. Add offline mode with request queueing
-4. Extend response rendering for complex business data (charts, forms)
-5. Implement push notifications for important Odoo events
+1. Implement premium UI/UX following the [theming guidelines](./theming.md)
+2. Create animated background and fluid transitions between screens
+3. Enhance voice recognition with additional language support
+4. Implement text-to-speech for voice responses
+5. Add offline mode with request queueing
+6. Extend response rendering for complex business data (charts, forms)
+7. Implement push notifications for important Odoo events
+8. Add dark/light theme toggle with smooth transition animations

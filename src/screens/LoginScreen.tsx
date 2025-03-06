@@ -6,29 +6,33 @@ import {
   Platform, 
   ScrollView, 
   Keyboard,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  StatusBar
 } from 'react-native';
 import { 
-  TextInput, 
-  Button, 
   Text, 
-  Surface, 
   Snackbar,
   HelperText,
-  Chip,
-  Avatar
+  IconButton
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { RootStackParamList } from '../App';
 import { useAppDispatch } from '../hooks/useAppDispatch';
 import { useAppSelector } from '../hooks/useAppSelector';
 import { login, clearError } from '../state/slices/authSlice';
 import { AuthError } from '../api/authService';
-import { colors } from '../utils/theme';
+import { colors, spacing, createShadow } from '../utils/theme';
 import { PROXY_URL as PROXY_SERVER_URL, DEFAULT_ODOO_URL } from '../utils/config';
+
+// Import new components
+import AnimatedBackground from '../components/AnimatedBackground';
+import GlassCard from '../components/GlassCard';
+import AnimatedButton from '../components/AnimatedButton';
+import FloatingInput from '../components/FloatingInput';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -170,123 +174,138 @@ const LoginScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Remove TouchableWithoutFeedback that was causing focus issues */}
+      <StatusBar barStyle="light-content" backgroundColor={colors.backgroundDark} />
+      
+      {/* Animated Background */}
+      <AnimatedBackground />
+      
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <ScrollView 
           contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled" // This is important for maintaining focus
+          keyboardShouldPersistTaps="handled"
         >
-          <Surface style={styles.surface} elevation={4}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>Odoo</Text>
-              <Text style={styles.logoSubtext}>Voice Assistant</Text>
-            </View>
-
-            <View style={styles.formContainer}>
-              <TextInput
-                mode="outlined"
-                label="Username"
-                value={username}
-                onChangeText={(text) => {
-                  setUsername(text);
-                  setUsernameError('');
-                }}
-                autoCapitalize="none"
-                style={styles.input}
-                disabled={loading}
-                error={!!usernameError}
-                accessibilityLabel="Username input"
-                placeholder="Enter your username"
-                returnKeyType="next"
-                left={<TextInput.Icon icon="account" />}
-                blurOnSubmit={false} // Prevents auto-blur on submit
-              />
-              {usernameError ? (
-                <HelperText type="error" visible={!!usernameError}>
-                  {usernameError}
-                </HelperText>
-              ) : null}
-
-              <TextInput
-                mode="outlined"
-                label="Password"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  setPasswordError('');
-                }}
-                secureTextEntry={!showPassword}
-                right={
-                  <TextInput.Icon 
-                    icon={showPassword ? "eye-off" : "eye"} 
-                    onPress={() => setShowPassword(!showPassword)}
-                    accessibilityLabel={showPassword ? "Hide password" : "Show password"}
-                    forceTextInputFocus={false} // Prevent stealing focus
-                  />
-                }
-                left={<TextInput.Icon icon="lock" />}
-                style={styles.input}
-                disabled={loading}
-                error={!!passwordError}
-                accessibilityLabel="Password input"
-                placeholder="Enter your password"
-                returnKeyType="next"
-                blurOnSubmit={false} // Prevents auto-blur on submit
-              />
-              {passwordError ? (
-                <HelperText type="error" visible={!!passwordError}>
-                  {passwordError}
-                </HelperText>
-              ) : null}
-
-              <TextInput
-                mode="outlined"
-                label="Odoo Server URL"
-                value={serverUrl}
-                onChangeText={(text) => {
-                  setServerUrl(text);
-                  setServerUrlError('');
-                }}
-                autoCapitalize="none"
-                keyboardType="url"
-                placeholder="https://example.odoo.com"
-                left={<TextInput.Icon icon="web" />}
-                style={styles.input}
-                disabled={loading}
-                error={!!serverUrlError}
-                accessibilityLabel="Odoo Server URL input"
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-                blurOnSubmit={true} // This can be true for the last field
-              />
-              {serverUrlError ? (
-                <HelperText type="error" visible={!!serverUrlError}>
-                  {serverUrlError}
-                </HelperText>
-              ) : null}
-
-              <Button
-                mode="contained"
-                onPress={handleLogin}
-                style={styles.button}
-                disabled={loading}
-                loading={loading}
-                accessibilityLabel="Login button"
-                contentStyle={styles.buttonContent}
-              >
-                {loading ? 'Logging in...' : 'Login'}
-              </Button>
+          {/* App Logo - Animated */}
+          <Animated.View 
+            style={styles.logoContainer}
+            entering={FadeInDown.duration(800).delay(200)}
+          >
+            <Text style={styles.logoText}>Odoo</Text>
+            <Text style={styles.logoSubtext}>Voice Assistant</Text>
+          </Animated.View>
+          
+          {/* Main Glass Card - Animated */}
+          <Animated.View 
+            entering={FadeInUp.duration(1000).delay(300)}
+            style={styles.cardContainer}
+          >
+            <GlassCard elevation={6} glowColor={colors.primary}>
+              <Text style={styles.loginTitle}>Welcome</Text>
+              <Text style={styles.loginSubtitle}>Sign in to continue</Text>
               
-              <Text style={styles.noteText}>
-                Connecting via proxy at {PROXY_SERVER_URL}
-              </Text>
-            </View>
-          </Surface>
+              <View style={styles.formContainer}>
+                {/* Username Input */}
+                <FloatingInput 
+                  label="Username"
+                  value={username}
+                  onChangeText={(text) => {
+                    setUsername(text);
+                    setUsernameError('');
+                  }}
+                  autoCapitalize="none"
+                  error={usernameError}
+                  hint={usernameError ? undefined : "Enter your Odoo username"}
+                  leftIcon={
+                    <IconButton
+                      icon="account"
+                      size={20}
+                      iconColor={colors.primary}
+                    />
+                  }
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                />
+                
+                {/* Password Input */}
+                <FloatingInput 
+                  label="Password"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setPasswordError('');
+                  }}
+                  secureTextEntry={!showPassword}
+                  error={passwordError}
+                  hint={passwordError ? undefined : "Enter your password"}
+                  leftIcon={
+                    <IconButton
+                      icon="lock"
+                      size={20}
+                      iconColor={colors.primary}
+                    />
+                  }
+                  rightIcon={
+                    <IconButton
+                      icon={showPassword ? "eye-off" : "eye"}
+                      size={20}
+                      iconColor={colors.textSecondary}
+                      onPress={() => setShowPassword(!showPassword)}
+                    />
+                  }
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                />
+                
+                {/* Server URL Input */}
+                <FloatingInput 
+                  label="Odoo Server URL"
+                  value={serverUrl}
+                  onChangeText={(text) => {
+                    setServerUrl(text);
+                    setServerUrlError('');
+                  }}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  error={serverUrlError}
+                  hint={serverUrlError ? undefined : "https://example.odoo.com"}
+                  leftIcon={
+                    <IconButton
+                      icon="web"
+                      size={20}
+                      iconColor={colors.primary}
+                    />
+                  }
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                  blurOnSubmit={true}
+                />
+                
+                {/* Login Button */}
+                <View style={styles.buttonContainer}>
+                  <AnimatedButton
+                    onPress={handleLogin}
+                    title={loading ? "Logging in..." : "Login"}
+                    variant="primary"
+                    disabled={loading}
+                    loading={loading}
+                  />
+                </View>
+                
+                {/* Proxy Info */}
+                <Animated.Text 
+                  style={styles.noteText}
+                  entering={FadeIn.duration(800).delay(600)}
+                >
+                  Connecting via proxy at {PROXY_SERVER_URL}
+                </Animated.Text>
+              </View>
+            </GlassCard>
+          </Animated.View>
         </ScrollView>
 
+        {/* Error Snackbar */}
         <Snackbar
           visible={snackbarVisible}
           onDismiss={dismissSnackbar}
@@ -307,80 +326,74 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundDark,
   },
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
-  },
-  surface: {
-    padding: 24,
-    borderRadius: 12,
-    width: '100%',
-    maxWidth: 500,
-    alignSelf: 'center',
+    padding: spacing.xl,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.xxl,
   },
   logoText: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: colors.primary,
-    letterSpacing: 1,
+    fontSize: 48,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: 1.5,
+    textShadowColor: `${colors.primary}90`,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
   },
   logoSubtext: {
-    fontSize: 18,
-    color: colors.accent,
-    marginTop: 8,
-    letterSpacing: 0.5,
+    fontSize: 20,
+    color: colors.secondary,
+    marginTop: spacing.sm,
+    letterSpacing: 1,
   },
-  serverModeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 24,
+  cardContainer: {
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
   },
-  serverChip: {
-    marginHorizontal: 8,
+  loginTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
   },
-  activeChip: {
-    backgroundColor: colors.primary + '20',
+  loginSubtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
   },
   formContainer: {
     width: '100%',
+    marginTop: spacing.md,
   },
-  input: {
-    marginBottom: 8,
-  },
-  button: {
-    marginTop: 16,
-    borderRadius: 8,
-  },
-  buttonContent: {
-    height: 48,
-    justifyContent: 'center',
-  },
-  demoButtonContainer: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  demoButton: {
-    width: '70%',
+  buttonContainer: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   snackbar: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.backgroundMedium,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.md,
+    borderRadius: 8,
   },
   noteText: {
     textAlign: 'center',
     fontSize: 12,
-    color: colors.text + '80',
-    marginTop: 16,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
     fontStyle: 'italic',
   }
 });
