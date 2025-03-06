@@ -1,21 +1,61 @@
 {
   "name": "odoo-react-native",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "React Native app for Odoo integration with MCP SDK",
+  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "jest",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "odoo",
+    "react-native",
+    "mcp",
+    "voice-interface"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "expo": "^52.0.37",
-    "expo-status-bar": "^2.0.1",
-    "react": "^19.0.0",
-    "react-native": "^0.78.0"
+    "@expo/metro-config": "0.10.7",
+    "@expo/webpack-config": "^19.0.0",
+    "@react-native-async-storage/async-storage": "1.18.2",
+    "@react-native-voice/voice": "3.2.4",
+    "@react-navigation/native": "6.1.7",
+    "@react-navigation/native-stack": "6.9.13",
+    "@reduxjs/toolkit": "1.9.5",
+    "expo": "~49.0.15",
+    "expo-status-bar": "~1.6.0",
+    "metro": "0.76.7",
+    "metro-core": "0.76.7",
+    "metro-runtime": "0.76.7",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.72.6",
+    "react-native-paper": "5.10.6",
+    "react-native-safe-area-context": "4.6.3",
+    "react-native-screens": "3.22.0",
+    "react-native-web": "0.19.9",
+    "react-redux": "8.1.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/jest": "^29.5.3",
+    "@types/react": "~18.2.14",
+    "@types/react-native": "^0.72.8",
+    "jest": "^29.6.2",
+    "jest-expo": "~49.0.0",
+    "typescript": "^5.1.6"
+  },
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)"
+    ]
   }
 }
