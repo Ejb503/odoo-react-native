@@ -28,7 +28,7 @@ import { useAppSelector } from '../hooks/useAppSelector';
 import { login, clearError } from '../state/slices/authSlice';
 import { AuthError } from '../api/authService';
 import { colors, spacing } from '../utils/theme';
-import { PROXY_URL as PROXY_SERVER_URL, DEFAULT_ODOO_URL } from '../utils/config';
+import { PROXY_URL as PROXY_SERVER_URL, DEFAULT_ODOO_URL, SKIP_AUTH_ENABLED } from '../utils/config';
 
 // Import components
 import FloatingInput from '../components/FloatingInput';
@@ -263,6 +263,11 @@ const LoginScreen = () => {
     );
   };
 
+  // Development mode
+  const handleSkipAuth = () => {
+    navigation.replace('Main');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.backgroundDark} />
@@ -294,6 +299,19 @@ const LoginScreen = () => {
         >
           {renderLogo()}
           {renderForm()}
+          
+          {SKIP_AUTH_ENABLED && (
+            <View style={styles.devContainer}>
+              <Button
+                mode="contained"
+                onPress={handleSkipAuth}
+                style={styles.devButton}
+                labelStyle={styles.devButtonLabel}
+              >
+                Skip Login (Dev Mode)
+              </Button>
+            </View>
+          )}
         </ScrollView>
 
         {/* Error Snackbar */}
@@ -413,7 +431,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.sm,
     fontStyle: 'italic',
-  }
+  },
+  devContainer: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  devButton: {
+    backgroundColor: colors.warning,
+  },
+  devButtonLabel: {
+    color: colors.textPrimary,
+  },
 });
 
 export default LoginScreen;

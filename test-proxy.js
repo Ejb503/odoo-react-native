@@ -18,7 +18,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Set test parameters from .env file
-const PROXY_URL = (process.env.PROXY_URL || 'http://localhost:3000') + '/api';
+const PROXY_URL = (process.env.PROXY_URL || 'http://172.31.174.192:3000') + '/api';
 const TEST_ODOO_URL = process.env.TEST_USER_URL || 'https://demo.odoo.com';
 const TEST_USERNAME = process.env.TEST_USER_USERNAME || 'demo';
 const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'demo';

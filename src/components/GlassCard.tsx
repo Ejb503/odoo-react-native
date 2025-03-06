@@ -3,10 +3,9 @@ import { StyleSheet, View, ViewStyle, StyleProp, Platform, Pressable } from 'rea
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
-  withTiming, 
+  withTiming,
   withRepeat,
   withSequence,
-  Easing,
   interpolateColor
 } from 'react-native-reanimated';
 import { colors, components, createShadow, timing } from '../utils/theme';
@@ -35,40 +34,35 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   onPress,
   pulseGlow = true,
 }) => {
-  // Animated values
   const scale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.4);
   const glowSpread = useSharedValue(1);
   const borderGlow = useSharedValue(0);
   
-  // Initialize animations
   useEffect(() => {
-    if (pulseGlow) {
-      // Subtle pulsing glow effect
+    if (pulseGlow && Platform.OS !== 'web') {
       glowOpacity.value = withRepeat(
         withSequence(
-          withTiming(0.7, { duration: timing.slow, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.3, { duration: timing.slow, easing: Easing.inOut(Easing.ease) })
+          withTiming(0.7, { duration: timing.slow }),
+          withTiming(0.3, { duration: timing.slow })
         ),
         -1,
         true
       );
       
-      // Subtle spread of glow
       glowSpread.value = withRepeat(
         withSequence(
-          withTiming(1.1, { duration: timing.slow + 300, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.95, { duration: timing.slow + 300, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.1, { duration: timing.slow + 300 }),
+          withTiming(0.95, { duration: timing.slow + 300 })
         ),
         -1,
         true
       );
       
-      // Border glow animation
       borderGlow.value = withRepeat(
         withSequence(
-          withTiming(1, { duration: timing.slow * 1.5, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0, { duration: timing.slow * 1.5, easing: Easing.inOut(Easing.ease) })
+          withTiming(1, { duration: timing.slow * 1.5 }),
+          withTiming(0, { duration: timing.slow * 1.5 })
         ),
         -1,
         true
@@ -76,56 +70,36 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     }
   }, [pulseGlow]);
 
-  // Handle press/hover state
   const onPressIn = () => {
-    if (animated) {
-      scale.value = withTiming(0.98, { duration: timing.fast, easing: Easing.out(Easing.ease) });
+    if (animated && Platform.OS !== 'web') {
+      scale.value = withTiming(0.98, { duration: timing.fast });
       glowOpacity.value = withTiming(0.8, { duration: timing.fast });
     }
   };
 
   const onPressOut = () => {
-    if (animated) {
-      scale.value = withTiming(1, { duration: timing.normal, easing: Easing.elastic(1.1) });
-      
+    if (animated && Platform.OS !== 'web') {
+      scale.value = withTiming(1, { duration: timing.normal });
       if (!pulseGlow) {
         glowOpacity.value = withTiming(0.4, { duration: timing.normal });
       }
     }
   };
 
-  // Create animated styles
-  const animatedGlowStyle = useAnimatedStyle(() => {
-    return {
-      opacity: glowOpacity.value,
-      transform: [{ scale: glowSpread.value }],
-    };
-  });
+  const animatedGlowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+    transform: [{ scale: glowSpread.value }],
+  }));
 
-  const animatedCardStyle = useAnimatedStyle(() => {
-    // Handle web compatibility with transform style
-    if (Platform.OS === 'web') {
-      return {
-        transform: `scale(${scale.value})`,
-        borderColor: interpolateColor(
-          borderGlow.value,
-          [0, 1],
-          [`${colors.textPrimary}10`, `${glowColor}40`]
-        ),
-      };
-    } else {
-      return {
-        transform: [{ scale: scale.value }],
-        borderColor: interpolateColor(
-          borderGlow.value,
-          [0, 1],
-          [`${colors.textPrimary}10`, `${glowColor}40`]
-        ),
-      };
-    }
-  });
+  const animatedCardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    borderColor: interpolateColor(
+      borderGlow.value,
+      [0, 1],
+      [`${colors.textPrimary}10`, `${glowColor}40`]
+    ),
+  }));
 
-  // Combine base styles with shadow and any custom styles
   const combinedStyles = [
     styles.card,
     {
@@ -134,57 +108,66 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     style,
   ];
 
-  // Prepare content
   const cardContent = (
     <>
-      {/* Animated glow effect under the card */}
-      <Animated.View 
-        style={[
-          styles.glowEffect, 
-          { backgroundColor: `${glowColor}20` },
-          animatedGlowStyle
-        ]} 
-      />
+      {Platform.OS !== 'web' && (
+        <Animated.View 
+          style={[
+            styles.glowEffect, 
+            { backgroundColor: `${glowColor}20` },
+            animatedGlowStyle
+          ]} 
+        />
+      )}
       
-      {/* Glass overlay for frosted effect */}
-      <View style={styles.glassOverlay} />
+      {Platform.OS === 'web' ? (
+        <div 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: `${colors.textPrimary}08`,
+            borderRadius: components.card.borderRadius - 1,
+            backdropFilter: 'blur(10px)',
+          }}
+        />
+      ) : (
+        <View style={styles.glassOverlay} />
+      )}
       
-      {/* Card's main content */}
       <View style={styles.content}>
         {children}
       </View>
       
-      {/* Top highlight for 3D effect */}
       <View style={styles.topHighlight} />
     </>
   );
 
-  // Handle web platform separately for better compatibility
   if (Platform.OS === 'web') {
-    if (onPress) {
-      return (
-        <div 
-          onClick={onPress}
-          onMouseDown={onPressIn}
-          onMouseUp={onPressOut}
-          onMouseLeave={onPressOut}
-          style={{ cursor: 'pointer' }}
-        >
-          <Animated.View style={[...combinedStyles, createShadow(elevation, glowColor), animatedCardStyle]}>
-            {cardContent}
-          </Animated.View>
-        </div>
-      );
-    }
-    
     return (
-      <Animated.View style={[...combinedStyles, createShadow(elevation, glowColor), animatedCardStyle]}>
+      <div 
+        onClick={onPress}
+        style={{
+          ...StyleSheet.flatten(combinedStyles),
+          ...createShadow(elevation, glowColor),
+          transition: 'all 0.2s ease-out',
+          cursor: onPress ? 'pointer' : 'default',
+          transform: 'scale(1)',
+          '&:hover': {
+            transform: onPress ? 'scale(0.98)' : 'none',
+          },
+          '&:active': {
+            transform: onPress ? 'scale(0.96)' : 'none',
+          },
+        } as any}
+      >
         {cardContent}
-      </Animated.View>
+      </div>
     );
   }
 
-  // For native platforms with press handling
   if (onPress) {
     return (
       <Pressable onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
@@ -195,7 +178,6 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     );
   }
 
-  // For non-interactive native cards
   return (
     <Animated.View style={[...combinedStyles, createShadow(elevation, glowColor), animatedCardStyle]}>
       {cardContent}
@@ -207,20 +189,18 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: components.card.borderRadius,
     padding: components.card.padding,
-    backgroundColor: `${colors.backgroundMedium}85`, // More transparent
+    backgroundColor: `${colors.backgroundMedium}85`,
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 1,
-    // borderColor handled by animated style
   },
   glassOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: `${colors.textPrimary}08`, // Almost transparent white
-    borderRadius: components.card.borderRadius - 1, // Slightly smaller than card
-    backdropFilter: 'blur(10px)', // Will only work on web
+    backgroundColor: `${colors.textPrimary}08`,
+    borderRadius: components.card.borderRadius - 1,
   },
   content: {
-    zIndex: 2, // Ensure content is above the glass overlay
+    zIndex: 2,
   },
   glowEffect: {
     ...StyleSheet.absoluteFillObject,

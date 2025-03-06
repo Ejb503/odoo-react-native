@@ -76,12 +76,14 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
   // Setup animations
   useEffect(() => {
+    if (Platform.OS === 'web') return;
+    
     if (glowEffect && !disabled && !loading && variant !== "text") {
       // Pulsing glow effect
       glowOpacity.value = withRepeat(
         withSequence(
-          withTiming(0.7, { duration: timing.slow, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.2, { duration: timing.slow, easing: Easing.inOut(Easing.ease) })
+          withTiming(0.7, { duration: timing.slow }),
+          withTiming(0.2, { duration: timing.slow })
         ),
         -1,
         true
@@ -90,8 +92,8 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       // Subtle scale effect
       glowScale.value = withRepeat(
         withSequence(
-          withTiming(1.15, { duration: timing.slow + 300, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: timing.slow + 300, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.15, { duration: timing.slow + 300 }),
+          withTiming(1, { duration: timing.slow + 300 })
         ),
         -1,
         true
@@ -101,7 +103,7 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       if (variant === "primary" || variant === "gradient") {
         // Animate gradient position
         gradientPosition.value = withRepeat(
-          withTiming(1, { duration: 2500, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 2500 }),
           -1,
           true
         );
@@ -122,6 +124,8 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
   // Handle button press animations
   const handlePressIn = () => {
+    if (Platform.OS === 'web') return;
+    
     scale.value = withSpring(0.96, { ...animationPresets.spring, stiffness: 200 });
     pressed.value = withTiming(1, { duration: timing.fast });
     
@@ -133,6 +137,8 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
   };
 
   const handlePressOut = () => {
+    if (Platform.OS === 'web') return;
+    
     scale.value = withSpring(1, { 
       ...animationPresets.spring, 
       stiffness: 120,
@@ -166,27 +172,22 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
   // Animated styles for button scaling and effects
   const animatedStyles = useAnimatedStyle(() => {
-    // Handle web compatibility for transform
-    const transformStyle =
-      Platform.OS === "web"
-        ? { transform: `scale(${scale.value})` }
-        : { transform: [{ scale: scale.value }] };
-
-    // Generate more vibrant borderColor for secondary variant when pressed
-    const borderColorAnimation = 
-      variant === "secondary" 
-        ? { 
-            borderColor: interpolateColor(
-              pressed.value,
-              [0, 1],
-              [`${colors.primary}30`, colors.primary]
-            )
-          }
-        : {};
+    if (Platform.OS === 'web') {
+      return {
+        opacity: disabled ? 0.6 : 1,
+        backgroundColor: variant === "text" ? "transparent" : undefined,
+      };
+    }
 
     return {
-      ...transformStyle,
-      ...borderColorAnimation,
+      transform: [{ scale: scale.value }],
+      borderColor: variant === "secondary" 
+        ? interpolateColor(
+            pressed.value,
+            [0, 1],
+            [`${colors.primary}30`, colors.primary]
+          )
+        : undefined,
       opacity: disabled ? 0.6 : 1,
       backgroundColor: variant === "text" ? "transparent" : undefined,
     };
@@ -194,21 +195,25 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
   // Glow effect animation
   const glowAnimatedStyle = useAnimatedStyle(() => {
+    if (Platform.OS === 'web') {
+      return { opacity: 0 };
+    }
+    
     return {
       opacity: glowOpacity.value,
-      transform: Platform.OS === "web" 
-        ? { transform: `scale(${glowScale.value})` } 
-        : [{ scale: glowScale.value }],
+      transform: [{ scale: glowScale.value }],
     };
   });
 
   // Shimmer animation
   const shimmerAnimatedStyle = useAnimatedStyle(() => {
+    if (Platform.OS === 'web') {
+      return { opacity: 0 };
+    }
+    
     return {
       opacity: shimmerOpacity.value,
-      transform: Platform.OS === "web"
-        ? { transform: `translateX(${(gradientPosition.value * 200) - 100}%)` }
-        : [{ translateX: (gradientPosition.value * 200) - 100 }],
+      transform: [{ translateX: (gradientPosition.value * 200) - 100 }],
     };
   });
 
@@ -229,6 +234,10 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
         break;
       default:
         textColor = colors.textPrimary;
+    }
+
+    if (Platform.OS === 'web') {
+      return { color: textColor };
     }
 
     // Brighten text slightly when pressed for 'secondary' and 'text' variants
@@ -315,6 +324,31 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
 
   // Use gradient for primary and gradient variants
   const useGradient = variant === "primary" || variant === "gradient";
+
+  if (Platform.OS === 'web') {
+    const webStyles = {
+      ...styles.button,
+      height: buttonHeight,
+      ...shadowStyle,
+      transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+      cursor: (!disabled && !loading) ? 'pointer' : 'default',
+      opacity: disabled ? 0.6 : 1,
+      backgroundColor: useGradient ? buttonColors[0] : buttonColors[0],
+      ':hover': {
+        transform: (!disabled && !loading) ? 'scale(0.98)' : 'none',
+        opacity: (!disabled && !loading) ? 0.9 : disabled ? 0.6 : 1,
+      },
+    };
+
+    return (
+      <div
+        onClick={(!disabled && !loading) ? onPress : undefined}
+        style={webStyles}
+      >
+        {renderContent()}
+      </div>
+    );
+  }
 
   // Render the button with appropriate styling based on variant
   return (
