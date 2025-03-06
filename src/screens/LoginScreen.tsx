@@ -5,7 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { RootStackParamList } from '../App';
-import { useAppDispatch, useAppSelector } from '../hooks/useAppDispatch';
+import { useAppDispatch } from '../hooks/useAppDispatch';
+import { useAppSelector } from '../hooks/useAppSelector';
 import { loginStart, loginSuccess, loginFailure } from '../state/slices/authSlice';
 import { authService } from '../api/authService';
 import { colors } from '../utils/theme';

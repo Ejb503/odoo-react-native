@@ -1,0 +1,1 @@
+{"ast":null,"code":"import App from \"./src/App\";\nexport default App;","map":{"version":3,"names":["App"],"sources":["/var/www/html/odoo-react-native/App.js"],"sourcesContent":["import App from './src/App';\n\nexport default App;"],"mappings":"AAAA,OAAOA,GAAG;AAEV,eAAeA,GAAG","ignoreList":[]},"metadata":{},"sourceType":"module","externalDependencies":[]}

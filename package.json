@@ -22,7 +22,7 @@
   "license": "ISC",
   "dependencies": {
     "@expo/metro-config": "0.10.7",
-    "@expo/webpack-config": "^19.0.0",
+    "@expo/webpack-config": "^19.0.1",
     "@react-native-async-storage/async-storage": "1.18.2",
     "@react-native-voice/voice": "3.2.4",
     "@react-navigation/native": "6.1.7",
